@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Umucyo Ledger — Cooperative Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  :root{
+    --soil:#2E2A22;
+    --soil-2:#241f18;
+    --leaf:#2F5233;
+    --leaf-light:#3f6b45;
+    --harvest:#C9A227;
+    --rust:#B5482A;
+    --paper:#F4EFE2;
+    --paper-dim:#E4DCC6;
+    --ink:#211E17;
+    --ink-soft:#5b5443;
+    --line:#d8cfb2;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  #root{ min-height:100vh; }
+  .topbar{
+    background:var(--soil);
+    color:var(--paper);
+    padding:16px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:3px solid var(--harvest);
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand .mark{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:-.01em;
+  }
+  .brand .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--harvest);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .who{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:#cfc7ae; display:flex; align-items:center; gap:14px; }
+  .who button{
+    background:transparent; border:1px solid #6b6247; color:#e9e2cc;
+    padding:6px 12px; border-radius:14px; font-family:'IBM Plex Mono', monospace;
+    font-size:11px; cursor:pointer;
+  }
+  .who button:hover{ background:#3a3324; }
+
+  .shell{ display:flex; min-height:calc(100vh - 64px); }
+  .nav{
+    width:210px;
+    background:var(--paper-dim);
+    border-right:1px solid var(--line);
+    padding:20px 0;
+  }
+  .nav button{
+    display:block; width:100%; text-align:left;
+    padding:11px 22px;
+    background:none; border:none; border-left:3px solid transparent;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px; color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .nav button.active{
+    border-left:3px solid var(--leaf);
+    color:var(--ink);
+    background:#eee6cd;
+    font-weight:600;
+  }
+  .main{ flex:1; padding:28px 32px; }
+  h1.page-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:26px;
+    margin:0 0 4px;
+  }
+  .subtitle{ color:var(--ink-soft); font-size:13px; margin-bottom:22px; }
+
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:26px; }
+  .stat{
+    background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:16px 18px; position:relative; overflow:hidden;
+  }
+  .stat::before{
+    content:""; position:absolute; top:0; left:0; width:4px; height:100%;
+    background:var(--leaf);
+  }
+  .stat .label{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+  .stat .value{ font-family:'Fraunces', serif; font-size:28px; font-weight:600; margin-top:4px; }
+
+  table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  thead th{
+    background:var(--soil); color:var(--paper);
+    text-align:left; font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    padding:10px 14px;
+  }
+  tbody td{ padding:10px 14px; border-top:1px solid var(--line); font-size:13.5px; }
+  tbody tr:hover{ background:#faf6ea; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .badge{
+    display:inline-block; padding:2px 9px; border-radius:10px;
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase;
+  }
+  .badge.open{ background:#e6f0e6; color:var(--leaf); }
+  .badge.locked{ background:#fbeecb; color:#8a6a10; }
+  .badge.sold{ background:#e7e2f5; color:#4b3d8f; }
+  .badge.low{ background:#e6f0e6; color:var(--leaf); }
+  .badge.medium{ background:#fbeecb; color:#8a6a10; }
+  .badge.high{ background:#fbe2d6; color:var(--rust); }
+  .badge.critical{ background:#f6d3c8; color:#8a2c14; }
+
+  .card{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:20px; }
+  .card h3{ font-family:'Fraunces', serif; margin:0 0 12px; font-size:16px; }
+  .row-actions button, .card form button{
+    background:var(--leaf); color:#fff; border:none; border-radius:16px;
+    padding:7px 14px; font-size:12px; font-family:'IBM Plex Sans',sans-serif;
+    cursor:pointer; margin-right:6px; font-weight:600;
+  }
+  .row-actions button.secondary{ background:var(--rust); }
+  .row-actions button:hover, .card form button:hover{ opacity:.88; }
+  form.inline{ display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+  form.inline label{ display:flex; flex-direction:column; font-size:11px; color:var(--ink-soft); gap:4px; font-family:'IBM Plex Mono', monospace; }
+  form.inline input, form.inline select{
+    padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:13px; min-width:140px;
+  }
+
+  .login-wrap{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, #3a3324 0, transparent 45%),
+      radial-gradient(circle at 85% 85%, #223019 0, transparent 55%),
+      var(--soil);
+  }
+  .login-card{
+    background:var(--paper); border-radius:14px; padding:34px 34px 28px;
+    width:320px; box-shadow:0 40px 80px -30px rgba(0,0,0,.6);
+  }
+  .login-card .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--harvest); }
+  .login-card h1{ font-family:'Fraunces', serif; font-size:24px; margin:6px 0 18px; }
+  .login-card input{
+    width:100%; padding:11px 12px; margin-bottom:10px; border:1px solid var(--line); border-radius:7px; font-size:14px;
+  }
+  .login-card button{
+    width:100%; padding:11px 0; background:var(--leaf); color:#fff; border:none;
+    border-radius:7px; font-weight:600; cursor:pointer; font-size:14px; margin-top:4px;
+  }
+  .login-card button:hover{ background:var(--leaf-light); }
+  .error{ color:var(--rust); font-size:12.5px; margin-top:8px; font-family:'IBM Plex Mono', monospace; }
+  .hint-line{ font-size:11.5px; color:var(--ink-soft); margin-top:14px; line-height:1.5; }
+  .empty{ padding:26px; text-align:center; color:var(--ink-soft); font-size:13px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback } = React;
+
+const API = "/api/v1/";
+
+function useAuth(){
+  const [token, setToken] = useState(localStorage.getItem("umucyo_token") || "");
+  const [me, setMe] = useState(null);
+
+  const login = async (username, password) => {
+    const resp = await fetch(API + "auth/token/", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username, password})
+    });
+    if(!resp.ok) throw new Error("Invalid username or password.");
+    const data = await resp.json();
+    localStorage.setItem("umucyo_token", data.access);
+    setToken(data.access);
+    return data.access;
+  };
+
+  const logout = () => { localStorage.removeItem("umucyo_token"); setToken(""); setMe(null); };
+
+  return { token, me, setMe, login, logout };
+}
+
+function api(token, path, opts={}){
+  return fetch(API + path, {
+    ...opts,
+    headers: {
+      "Content-Type":"application/json",
+      "Authorization": token ? `Bearer ${token}` : undefined,
+      ...(opts.headers||{})
+    }
+  }).then(async r => {
+    if(!r.ok){ const t = await r.text(); throw new Error(t); }
+    if(r.status === 204) return null;
+    return r.json();
+  });
+}
+
+function Login({ onLogin }){
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr("");
+    try{ await onLogin(username, password); }
+    catch(ex){ setErr("Could not sign in — check your credentials."); }
+  };
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="eyebrow">Umucyo Ledger</div>
+        <h1>Cooperative sign in</h1>
+        <form onSubmit={submit}>
+          <input placeholder="Username" value={username} onChange={e=>setUsername(e.target.value)} />
+          <input placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
+          <button type="submit">Sign in</button>
+        </form>
+        {err && <div className="error">{err}</div>}
+        <div className="hint-line">
+          Demo accounts (after <span className="mono" style={{fontFamily:"IBM Plex Mono, monospace"}}>seed_demo_data</span>):<br/>
+          manager1 / vet1 / admin1 / rca1 — password <b>Umucyo@2026</b>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({label, value}){
+  return <div className="stat"><div className="label">{label}</div><div className="value">{value}</div></div>;
+}
+
+function Overview({token}){
+  const [summary, setSummary] = useState(null);
+  useEffect(()=>{ api(token, "dashboard/summary/").then(setSummary).catch(()=>{}); }, [token]);
+  if(!summary) return <div className="empty">Loading dashboard…</div>;
+  return (
+    <div>
+      <h1 className="page-title">Overview</h1>
+      <div className="subtitle">Live rollups across your cooperative's ledger (NFR 2 — sub-1.5s dashboard loads).</div>
+      <div className="stat-grid">
+        <StatCard label="Registered farmers" value={summary.total_farmers} />
+        <StatCard label="Logged deliveries" value={summary.total_deliveries} />
+        <StatCard label="Total weight (kg)" value={summary.total_weight_kg.toLocaleString()} />
+        <StatCard label="Open batches" value={summary.open_batches} />
+        <StatCard label="Locked batches" value={summary.locked_batches} />
+        <StatCard label="Sold batches" value={summary.sold_batches} />
+        <StatCard label="Unresolved anomalies" value={summary.unresolved_anomalies} />
+      </div>
+    </div>
+  );
+}
+
+function Farmers({token}){
+  const [farmers, setFarmers] = useState([]);
+  const load = useCallback(()=> api(token, "farmers/").then(d => setFarmers(d.results || d)), [token]);
+  useEffect(()=>{ load(); }, [load]);
+  return (
+    <div>
+      <h1 className="page-title">Farmers</h1>
+      <div className="subtitle">Members registered to your cooperative and their season totals.</div>
+      <table>
+        <thead><tr><th>Name</th><th>National ID</th><th>Phone</th><th>District</th><th>Season total (kg)</th></tr></thead>
+        <tbody>
+          {farmers.length===0 && <tr><td colSpan="5" className="empty">No farmers yet.</td></tr>}
+          {farmers.map(f => (
+            <tr key={f.id}>
+              <td>{f.full_name}</td>
+              <td className="mono">{f.national_id}</td>
+              <td className="mono">{f.phone_number}</td>
+              <td>{f.district}</td>
+              <td className="mono">{f.total_season_kg}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Deliveries({token}){
+  const [deliveries, setDeliveries] = useState([]);
+  const [farmers, setFarmers] = useState([]);
+  const [form, setForm] = useState({farmer:"", crop_type:"soya", weight_kg:""});
+  const [msg, setMsg] = useState("");
+
+  const load = useCallback(()=>{
+    api(token, "deliveries/").then(d => setDeliveries(d.results || d));
+    api(token, "farmers/").then(d => setFarmers(d.results || d));
+  }, [token]);
+  useEffect(()=>{ load(); }, [load]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setMsg("");
+    try{
+      await api(token, "deliveries/", {method:"POST", body: JSON.stringify(form)});
+      setMsg("Delivery logged — SMS receipt dispatched (FR 3.1).");
+      setForm({...form, weight_kg:""});
+      load();
+    }catch(ex){ setMsg("Could not log delivery — check the weight is between 0.1kg and 1500kg."); }
+  };
+
+  return (
+    <div>
+      <h1 className="page-title">Deliveries</h1>
+      <div className="subtitle">Append-only crop delivery ledger (FR 2.x, FR 4.1) — no entry can be edited or deleted once written.</div>
+
+      <div className="card">
+        <h3>Log a delivery</h3>
+        <form className="inline" onSubmit={submit}>
+          <label>Farmer
+            <select required value={form.farmer} onChange={e=>setForm({...form, farmer:e.target.value})}>
+              <option value="">Select…</option>
+              {farmers.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
+            </select>
+          </label>
+          <label>Crop
+            <input value={form.crop_type} onChange={e=>setForm({...form, crop_type:e.target.value})} />
+          </label>
+          <label>Weight (kg)
+            <input type="number" step="0.01" min="0.1" max="1500" required
+              value={form.weight_kg} onChange={e=>setForm({...form, weight_kg:e.target.value})} />
+          </label>
+          <button type="submit">Log delivery</button>
+        </form>
+        {msg && <div className="hint-line">{msg}</div>}
+      </div>
+
+      <table>
+        <thead><tr><th>Farmer</th><th>Crop</th><th>Weight (kg)</th><th>Dropped off</th></tr></thead>
+        <tbody>
+          {deliveries.length===0 && <tr><td colSpan="4" className="empty">No deliveries logged yet.</td></tr>}
+          {deliveries.map(d => (
+            <tr key={d.id}>
+              <td>{d.farmer_name}</td>
+              <td>{d.crop_type}</td>
+              <td className="mono">{d.weight_kg}</td>
+              <td className="mono">{new Date(d.dropoff_time).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Batches({token}){
+  const [batches, setBatches] = useState([]);
+  const [sales, setSales] = useState({});
+  const load = useCallback(()=> api(token, "batches/").then(d => setBatches(d.results || d)), [token]);
+  useEffect(()=>{ load(); }, [load]);
+
+  const lock = async (id) => { await api(token, `batches/${id}/lock/`, {method:"POST"}); load(); };
+
+  const recordSale = async (batch) => {
+    const price = prompt("Sale price (RWF) for this batch?");
+    if(!price) return;
+    const buyer = prompt("Buyer name?") || "Unnamed buyer";
+    const sale = await api(token, "sales/", {method:"POST", body: JSON.stringify({batch: batch.id, buyer_name: buyer, sale_price_rwf: price})});
+    setSales(s => ({...s, [batch.id]: sale}));
+    alert("Sale recorded. Verify the bank transfer, then calculate the split.");
+  };
+
+  const verifyAndSplit = async (batchId) => {
+    const sale = sales[batchId];
+    if(!sale){ alert("Record a sale for this batch first."); return; }
+    await api(token, `sales/${sale.id}/verify/`, {method:"POST", body: JSON.stringify({bank_transfer_ref: "REF-" + Date.now()})});
+    const splits = await api(token, `sales/${sale.id}/calculate_split/`, {method:"POST"});
+    alert("Revenue split calculated for " + splits.length + " farmer(s). See Farmers tab for totals.");
+    load();
+  };
+
+  return (
+    <div>
+      <h1 className="page-title">Batches &amp; sales</h1>
+      <div className="subtitle">Bottom-up batch totals (FR 4.1), bulk sale logging (FR 5.x), and algorithmic revenue split (FR 6.1).</div>
+      <table>
+        <thead><tr><th>Crop</th><th>Season</th><th>Total (kg)</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {batches.length===0 && <tr><td colSpan="5" className="empty">No batches yet — log a delivery to open one.</td></tr>}
+          {batches.map(b => (
+            <tr key={b.id}>
+              <td>{b.crop_type}</td>
+              <td className="mono">{b.season_label}</td>
+              <td className="mono">{b.total_weight_kg}</td>
+              <td><span className={"badge " + b.status.toLowerCase()}>{b.status}</span></td>
+              <td className="row-actions">
+                {b.status === "OPEN" && <button onClick={()=>lock(b.id)}>Lock batch</button>}
+                {b.status === "LOCKED" && <button onClick={()=>recordSale(b)}>Record sale</button>}
+                {b.status === "LOCKED" && sales[b.id] && <button onClick={()=>verifyAndSplit(b.id)}>Verify &amp; split</button>}
+                {b.status === "SOLD" && <span className="mono" style={{fontSize:"12px", color:"var(--ink-soft)"}}>Distributed</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Anomalies({token}){
+  const [items, setItems] = useState([]);
+  const [form, setForm] = useState({sector:"", category:"", description:"", severity:"LOW"});
+  const load = useCallback(()=> api(token, "anomalies/").then(d => setItems(d.results || d)), [token]);
+  useEffect(()=>{ load(); }, [load]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    await api(token, "anomalies/", {method:"POST", body: JSON.stringify(form)});
+    setForm({sector:"", category:"", description:"", severity:"LOW"});
+    load();
+  };
+
+  return (
+    <div>
+      <h1 className="page-title">Agronomic &amp; veterinary anomalies</h1>
+      <div className="subtitle">Regional health indicators for fast preventative intervention (FR 7.x).</div>
+      <div className="card">
+        <h3>Report an anomaly</h3>
+        <form className="inline" onSubmit={submit}>
+          <label>Sector<input required value={form.sector} onChange={e=>setForm({...form, sector:e.target.value})} /></label>
+          <label>Category<input required placeholder="e.g. crop blight" value={form.category} onChange={e=>setForm({...form, category:e.target.value})} /></label>
+          <label>Severity
+            <select value={form.severity} onChange={e=>setForm({...form, severity:e.target.value})}>
+              <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+            </select>
+          </label>
+          <label>Description<input required value={form.description} onChange={e=>setForm({...form, description:e.target.value})} /></label>
+          <button type="submit">Submit report</button>
+        </form>
+      </div>
+      <table>
+        <thead><tr><th>Sector</th><th>Category</th><th>Severity</th><th>Description</th><th>Reported</th></tr></thead>
+        <tbody>
+          {items.length===0 && <tr><td colSpan="5" className="empty">No anomalies reported.</td></tr>}
+          {items.map(a => (
+            <tr key={a.id}>
+              <td>{a.sector}</td>
+              <td>{a.category}</td>
+              <td><span className={"badge " + a.severity.toLowerCase()}>{a.severity}</span></td>
+              <td>{a.description}</td>
+              <td className="mono">{new Date(a.reported_at).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Audit({token}){
+  const [coops, setCoops] = useState([]);
+  const [report, setReport] = useState(null);
+  useEffect(()=>{ api(token, "cooperatives/").then(d => setCoops(d.results || d)); }, [token]);
+  const runAudit = async (id) => setReport(await api(token, `cooperatives/${id}/audit_report/`));
+  return (
+    <div>
+      <h1 className="page-title">RCA audit</h1>
+      <div className="subtitle">Regulator view across registered cooperatives (FR 6.2 — ledger audit trail export).</div>
+      <table>
+        <thead><tr><th>Cooperative</th><th>RCA reg. no.</th><th>District</th><th>Action</th></tr></thead>
+        <tbody>
+          {coops.map(c => (
+            <tr key={c.id}>
+              <td>{c.name}</td><td className="mono">{c.rca_registration_no}</td><td>{c.district}</td>
+              <td><button onClick={()=>runAudit(c.id)} style={{background:"var(--leaf)", color:"#fff", border:"none", borderRadius:14, padding:"6px 12px", cursor:"pointer"}}>Generate audit report</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {report && (
+        <div className="card" style={{marginTop:20}}>
+          <h3>Audit summary — {report.cooperative}</h3>
+          <pre className="mono" style={{whiteSpace:"pre-wrap", fontSize:12.5}}>{JSON.stringify(report, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App(){
+  const { token, login, logout } = useAuth();
+  const [tab, setTab] = useState("overview");
+  const [username, setUsername] = useState(null);
+
+  useEffect(()=>{
+    if(token){
+      try{ setUsername(JSON.parse(atob(token.split(".")[1])).username || "signed in"); }
+      catch(e){ setUsername("signed in"); }
+    }
+  }, [token]);
+
+  if(!token) return <Login onLogin={login} />;
+
+  const tabs = [
+    ["overview","Overview"], ["farmers","Farmers"], ["deliveries","Deliveries"],
+    ["batches","Batches & sales"], ["anomalies","Anomalies"], ["audit","RCA audit"],
+  ];
+
+  return (
+    <div>
+      <div className="topbar">
+        <div className="brand">
+          <span className="mark">Umucyo Ledger</span>
+          <span className="tag">Cooperative dashboard</span>
+        </div>
+        <div className="who">
+          <span>{username}</span>
+          <button onClick={logout}>Sign out</button>
+        </div>
+      </div>
+      <div className="shell">
+        <div className="nav">
+          {tabs.map(([key,label]) => (
+            <button key={key} className={tab===key?"active":""} onClick={()=>setTab(key)}>{label}</button>
+          ))}
+        </div>
+        <div className="main">
+          {tab==="overview" && <Overview token={token} />}
+          {tab==="farmers" && <Farmers token={token} />}
+          {tab==="deliveries" && <Deliveries token={token} />}
+          {tab==="batches" && <Batches token={token} />}
+          {tab==="anomalies" && <Anomalies token={token} />}
+          {tab==="audit" && <Audit token={token} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
