@@ -1,0 +1,1 @@
+# Cooperatives domain package
