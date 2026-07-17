@@ -17,9 +17,13 @@ class RevenueDistributionSerializer(serializers.ModelSerializer):
         fields = [
             "id", "sale", "farmer", "farmer_name", "farmer_national_id",
             "farmer_phone", "contribution_kg", "share_percentage",
-            "payout_rwf", "created_at"
+            "payout_rwf", "payment_status", "disbursement_ref",
+            "disbursed_at", "created_at"
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = [
+            "id", "sale", "farmer", "contribution_kg",
+            "share_percentage", "payout_rwf", "disbursed_at", "created_at"
+        ]
 
 
 class BulkSaleSerializer(serializers.ModelSerializer):

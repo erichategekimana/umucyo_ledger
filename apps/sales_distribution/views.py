@@ -62,13 +62,30 @@ class BulkSaleViewSet(viewsets.ModelViewSet):
 
 class RevenueDistributionViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Read-only viewset for auditing individual payout lines (`/api/v1/payouts/`).
+    Read-only viewset for auditing individual payout lines (`/api/v1/payouts/`), with
+    an action to disburse funds (`/api/v1/payouts/<id>/disburse/`).
     """
     serializer_class = RevenueDistributionSerializer
     permission_classes = [CanAuditOrRead]
 
     def get_queryset(self):
         return scoped_queryset(self.request, RevenueDistribution, coop_field="sale__batch__cooperative").order_by("-payout_rwf")
+
+    @action(detail=True, methods=["post"], permission_classes=[IsCooperativeManager])
+    def disburse(self, request, pk=None):
+        """
+        Marks a revenue distribution payout as disbursed via Mobile Money or Bank.
+        Requires `disbursement_ref` (e.g. MOMO_TX_991188).
+        """
+        payout = self.get_object()
+        ref = request.data.get("disbursement_ref", "").strip()
+        if not ref:
+            raise DRFValidationError("disbursement_ref (MoMo/Bank transaction code) is required.")
+        payout.payment_status = RevenueDistribution.PaymentStatus.PAID
+        payout.disbursement_ref = ref
+        payout.disbursed_at = timezone.now()
+        payout.save(update_fields=["payment_status", "disbursement_ref", "disbursed_at", "updated_at"])
+        return Response(RevenueDistributionSerializer(payout).data)
 
 
 class AuditReportView(APIView):

@@ -83,11 +83,11 @@ class BulkSale(TimeStampedUUIDModel):
         if total_kg <= 0:
             return []
 
-        # Aggregate contributions per farmer across all deliveries attached to this batch
+        # Aggregate contributions per farmer across all deliveries attached to this batch, respecting adjustments
         deliveries_by_farmer = {}
-        for d in self.batch.deliveries.all():
+        for d in self.batch.deliveries.prefetch_related("adjustments"):
             deliveries_by_farmer.setdefault(d.farmer_id, {"farmer": d.farmer, "kg": 0.0})
-            deliveries_by_farmer[d.farmer_id]["kg"] += float(d.weight_kg)
+            deliveries_by_farmer[d.farmer_id]["kg"] += float(d.effective_weight_kg)
 
         splits = []
         for farmer_id, data in deliveries_by_farmer.items():
@@ -114,7 +114,13 @@ class RevenueDistribution(TimeStampedUUIDModel):
     """
     Implements FR 6.1 Output:
     Represents an immutable, auditable payout allocation record for an individual farmer.
+    Now includes disbursement tracking across Mobile Money / Bank channels.
     """
+
+    class PaymentStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending Disbursement"
+        PAID = "PAID", "Disbursed via MoMo/Bank"
+        FAILED = "FAILED", "Payment Failed"
 
     sale = models.ForeignKey(
         BulkSale,
@@ -135,7 +141,7 @@ class RevenueDistribution(TimeStampedUUIDModel):
         help_text="Total weight in kg contributed by this farmer to the sold batch."
     )
     share_percentage = models.DecimalField(
-        max_digits=6,
+        max_digits=8,
         decimal_places=4,
         help_text="Proportional contribution percentage (0.0000 - 100.0000%)."
     )
@@ -143,6 +149,23 @@ class RevenueDistribution(TimeStampedUUIDModel):
         max_digits=14,
         decimal_places=2,
         help_text="Allocated payout amount in Rwandan Francs (RWF)."
+    )
+    payment_status = models.CharField(
+        max_length=16,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+        db_index=True,
+        help_text="Current disbursement status."
+    )
+    disbursement_ref = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text="Mobile Money or Bank transaction reference confirmation."
+    )
+    disbursed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the payout was successfully disbursed."
     )
 
     class Meta:
@@ -152,4 +175,4 @@ class RevenueDistribution(TimeStampedUUIDModel):
         unique_together = ("sale", "farmer")
 
     def __str__(self):
-        return f"{self.farmer.full_name} -> {self.payout_rwf} RWF ({self.share_percentage}%)"
+        return f"{self.farmer.full_name} -> {self.payout_rwf} RWF ({self.payment_status})"

@@ -74,3 +74,26 @@ class SalesAndSplitTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             sale.calculate_revenue_split()
+
+    def test_revenue_distribution_disbursement(self):
+        """Verifies marking a revenue distribution line as disbursed (`PaymentStatus.PAID`)."""
+        CropDelivery.log_delivery(self.f1, self.coop, self.officer, "soya", Decimal("100.00"))
+        batch = BatchTotal.objects.get(cooperative=self.coop, crop_type="soya")
+        batch.lock_batch()
+        sale = BulkSale.objects.create(
+            batch=batch,
+            buyer_name="Verified Buyer",
+            sale_price_rwf=Decimal("500000.00"),
+            verified=True,
+            recorded_by=self.manager
+        )
+        splits = sale.calculate_revenue_split()
+        payout = splits[0]
+        self.assertEqual(payout.payment_status, RevenueDistribution.PaymentStatus.PENDING)
+
+        payout.payment_status = RevenueDistribution.PaymentStatus.PAID
+        payout.disbursement_ref = "MOMO_TX_881122"
+        payout.save()
+        payout.refresh_from_db()
+        self.assertEqual(payout.payment_status, RevenueDistribution.PaymentStatus.PAID)
+        self.assertEqual(payout.disbursement_ref, "MOMO_TX_881122")

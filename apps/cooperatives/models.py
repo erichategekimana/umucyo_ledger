@@ -131,9 +131,9 @@ class Farmer(TimeStampedUUIDModel):
     def total_season_kg(self):
         """
         Dynamically computes the total running weight in kilograms contributed by this farmer
-        across all logged deliveries during the active season.
+        across all logged deliveries during the active season, respecting any scale adjustments.
         """
-        return self.deliveries.aggregate(t=Sum("weight_kg"))["t"] or 0
+        return sum(d.effective_weight_kg for d in self.deliveries.prefetch_related("adjustments"))
 
     def query_balance(self):
         """

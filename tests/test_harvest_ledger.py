@@ -94,3 +94,28 @@ class HarvestLedgerFraudBlockTests(TestCase):
         )
         self.assertEqual(adj.original_delivery, delivery)
         self.assertEqual(adj.corrected_weight_kg, Decimal("95.00"))
+
+    def test_effective_weight_and_batch_adjustment(self):
+        """Verifies that AdjustmentLog updates effective_weight_kg and BatchTotal bottom-up sum."""
+        admin_user = User.objects.create_user(
+            username="admin_test_2",
+            email="admin2@test.rw",
+            password="pass",
+            role="ADMIN",
+            phone_number="0788999004"
+        )
+        delivery = CropDelivery.log_delivery(self.farmer, self.coop, self.officer, "soya", Decimal("100.00"))
+        batch = delivery.batch
+        self.assertEqual(batch.total_weight_kg, Decimal("100.00"))
+        self.assertEqual(delivery.effective_weight_kg, Decimal("100.00"))
+
+        AdjustmentLog.objects.create(
+            original_delivery=delivery,
+            corrected_weight_kg=Decimal("90.00"),
+            reason="Scale error calibration",
+            approved_by=admin_user
+        )
+        batch.refresh_from_db()
+        self.assertEqual(delivery.effective_weight_kg, Decimal("90.00"))
+        self.assertEqual(batch.total_weight_kg, Decimal("90.00"))
+        self.assertEqual(self.farmer.total_season_kg, Decimal("90.00"))

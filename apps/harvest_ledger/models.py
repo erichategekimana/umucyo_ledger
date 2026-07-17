@@ -76,10 +76,10 @@ class BatchTotal(TimeStampedUUIDModel):
     def aggregate_deliveries(self):
         """
         Implements FR 4.1 (Mathematical Lock Calculation & Bottom-Up Link):
-        Runs a direct PostgreSQL `SUM()` query across all `CropDelivery` items linked to this batch.
-        Updates `total_weight_kg` atomically to guarantee an unchangeable single source of truth.
+        Aggregates `effective_weight_kg` across all `CropDelivery` items linked to this batch,
+        respecting any authorized `AdjustmentLog` corrections. Updates `total_weight_kg` atomically.
         """
-        total = self.deliveries.aggregate(t=Sum("weight_kg"))["t"] or 0
+        total = sum(d.effective_weight_kg for d in self.deliveries.prefetch_related("adjustments"))
         BatchTotal.objects.filter(pk=self.pk).update(total_weight_kg=total)
         self.refresh_from_db(fields=["total_weight_kg"])
         return self.total_weight_kg
@@ -178,6 +178,17 @@ class CropDelivery(TimeStampedUUIDModel):
     def __str__(self):
         return f"{self.farmer.full_name} - {self.weight_kg}kg {self.crop_type}"
 
+    @property
+    def effective_weight_kg(self):
+        """
+        Returns the corrected weight if an authorized AdjustmentLog exists for this delivery,
+        otherwise returns the original scale weight. Preserves append-only integrity of CropDelivery.
+        """
+        adjustments = self.adjustments.all()
+        if adjustments:
+            return max(adjustments, key=lambda a: a.created_at).corrected_weight_kg
+        return self.weight_kg
+
     def clean(self):
         """
         Implements FR 2.2 (Input Bounds Validation):
@@ -274,6 +285,11 @@ class AdjustmentLog(TimeStampedUUIDModel):
 
     def __str__(self):
         return f"Adjustment on {self.original_delivery_id} ({self.corrected_weight_kg}kg)"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.original_delivery_id and self.original_delivery.batch_id:
+            self.original_delivery.batch.aggregate_deliveries()
 
 
 class DiscrepancyFlag(TimeStampedUUIDModel):
