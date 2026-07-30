@@ -38,8 +38,8 @@ export const SaleList = () => {
     { header: 'Cooperative', accessor: 'cooperative_name' as keyof BulkSale },
     { header: 'Buyer', accessor: 'buyer' as keyof BulkSale },
     { header: 'Crop Type', accessor: 'batch_crop_type' as keyof BulkSale },
-    { header: 'Total Weight (kg)', accessor: (row: BulkSale) => row.total_weight_kg?.toFixed(2) || '0' },
-    { header: 'Total Amount (RWF)', accessor: (row: BulkSale) => row.total_amount?.toFixed(2) || '0' },
+    { header: 'Total Weight (kg)', accessor: (row: BulkSale) => Number(row.total_weight_kg || 0).toFixed(2) || '0' },
+    { header: 'Total Amount (RWF)', accessor: (row: BulkSale) => Number(row.total_amount || 0).toFixed(2) || '0' },
     { header: 'Status', accessor: (row: BulkSale) => (
       <span className={`px-2 py-1 rounded text-xs ${row.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : row.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
         {row.status}

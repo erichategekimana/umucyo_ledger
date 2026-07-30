@@ -15,6 +15,8 @@ export const FarmerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [totalKg, setTotalKg] = useState(0);
   const [deliveries, setDeliveries] = useState<CropDelivery[]>([]);
+  const [balanceData, setBalanceData] = useState<any>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,8 +63,8 @@ export const FarmerDashboard = () => {
           <h1 className="page-title">My Dashboard</h1>
           <p className="page-subtitle">Welcome back, {user?.username} 🌾</p>
         </div>
-        <Link to={ROUTES.NOTIFICATIONS} className="btn-outline">
-          <Bell size={16} /> Notifications
+        <Link to={ROUTES.DELIVERY_NEW} className="btn-primary">
+          <Truck size={16} /> Log New Delivery
         </Link>
       </div>
 
@@ -70,7 +72,7 @@ export const FarmerDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
           title="Total Season Weight"
-          value={totalKg > 0 ? `${totalKg.toFixed(1)} kg` : '0 kg'}
+          value={totalKg > 0 ? `${Number(totalKg || 0).toFixed(1)} kg` : '0 kg'}
           subtitle="Cumulative delivered this season"
           icon={<Scale size={22} />}
           color="emerald"
@@ -100,20 +102,42 @@ export const FarmerDashboard = () => {
           <ChevronRight size={16} className="ml-auto text-slate-300 group-hover:text-emerald-500 transition-colors" />
         </Link>
 
-        <Link
-          to={ROUTES.NOTIFICATIONS}
-          className="content-card flex items-center gap-4 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group"
+        <button
+          onClick={async () => {
+            setBalanceLoading(true);
+            try {
+              const farmersResp = await cooperativeService.listFarmers({ user: user?.id, page_size: 1 });
+              if (farmersResp.results.length > 0) {
+                const b = await cooperativeService.getFarmerBalance(farmersResp.results[0].id);
+                setBalanceData(b);
+              }
+            } catch (err) {
+              console.error(err);
+            } finally {
+              setBalanceLoading(false);
+            }
+          }}
+          disabled={balanceLoading}
+          className="content-card flex items-center gap-4 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group text-left"
         >
           <div className="stat-card-icon bg-amber-100 text-amber-600">
-            <Bell size={20} />
+            {balanceLoading ? <LoadingSpinner /> : <Scale size={20} />}
           </div>
           <div>
-            <p className="font-semibold text-slate-800">Notifications</p>
-            <p className="text-xs text-slate-500">SMS receipts and delivery alerts</p>
+            <p className="font-semibold text-slate-800">Check Balance</p>
+            <p className="text-xs text-slate-500">Query your pending ledger balances</p>
           </div>
           <ChevronRight size={16} className="ml-auto text-slate-300 group-hover:text-amber-500 transition-colors" />
-        </Link>
+        </button>
       </div>
+
+      {balanceData && (
+        <div className="content-card p-5 bg-amber-50/50 border border-amber-100">
+          <h3 className="font-semibold text-amber-900 mb-2">Live Balance Summary</h3>
+          <p className="text-sm text-amber-800">Available Payouts: <strong>{balanceData.available_payouts} RWF</strong></p>
+          <p className="text-sm text-amber-800">Season Delivered: <strong>{balanceData.total_season_kg} kg</strong></p>
+        </div>
+      )}
 
       {/* Activity */}
       <ActivityFeed activities={activities} title="Recent Deliveries" maxItems={5} />

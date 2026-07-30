@@ -7,6 +7,7 @@ export const CooperativeRegistrationForm = ({ onSuccess }: { onSuccess: () => vo
   const [formData, setFormData] = useState({
     name: '',
     preferred_name: '',
+    rca_registration_no: '',
     district: '',
     sector: '',
     crop: 'Coffee',
@@ -103,9 +104,14 @@ export const CooperativeRegistrationForm = ({ onSuccess }: { onSuccess: () => vo
             <input type="text" name="preferred_name" value={formData.preferred_name} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none" placeholder="Short name" />
           </div>
           <div className="form-group">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Primary Crop</label>
-            <input type="text" name="crop" required value={formData.crop} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none" placeholder="e.g. Coffee" />
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">RCA Registration No.</label>
+            <input type="text" name="rca_registration_no" required value={formData.rca_registration_no} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none" placeholder="e.g. RCA/0123/2023" />
           </div>
+        </div>
+
+        <div className="form-group">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Primary Crop</label>
+          <input type="text" name="crop" required value={formData.crop} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none" placeholder="e.g. Coffee" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

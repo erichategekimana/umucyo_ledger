@@ -82,7 +82,7 @@ export const CollectionOfficerDashboard = () => {
         />
         <StatCard
           title="Total Weight Collected"
-          value={`${totalWeight.toFixed(1)} kg`}
+          value={`${Number(totalWeight || 0).toFixed(1)} kg`}
           subtitle="Recent 10 deliveries"
           icon={<Scale size={22} />}
           color="amber"

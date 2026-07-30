@@ -106,15 +106,15 @@ export const AuditReport = () => {
             </div>
             <div className="border p-2 rounded">
               <p className="text-sm text-gray-500">Total Revenue (RWF)</p>
-              <p className="text-lg font-bold">{report.summary.total_revenue.toFixed(2)}</p>
+              <p className="text-lg font-bold">{Number(report.summary.total_revenue || 0).toFixed(2)}</p>
             </div>
             <div className="border p-2 rounded">
               <p className="text-sm text-gray-500">Total Payouts (RWF)</p>
-              <p className="text-lg font-bold">{report.summary.total_payouts.toFixed(2)}</p>
+              <p className="text-lg font-bold">{Number(report.summary.total_payouts || 0).toFixed(2)}</p>
             </div>
             <div className="border p-2 rounded">
               <p className="text-sm text-gray-500">Pending Payouts (RWF)</p>
-              <p className="text-lg font-bold">{report.summary.pending_payouts.toFixed(2)}</p>
+              <p className="text-lg font-bold">{Number(report.summary.pending_payouts || 0).toFixed(2)}</p>
             </div>
           </div>
           {/* Optionally list sales and payouts */}

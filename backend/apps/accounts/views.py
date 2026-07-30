@@ -81,6 +81,19 @@ class VeterinarianApplicationViewSet(viewsets.ModelViewSet):
     queryset = VeterinarianApplication.objects.all().order_by("-created_at")
     serializer_class = VeterinarianApplicationSerializer
 
+    def perform_create(self, serializer):
+        application = serializer.save()
+        
+        # Notify Super Admins
+        from apps.notifications.models import Notification
+        from apps.accounts.models import User
+        super_admins = User.objects.filter(role="SUPER_ADMIN")
+        notifications = [
+            Notification(user=sa, message=f"New veterinarian application received from {application.first_name} {application.last_name}.")
+            for sa in super_admins
+        ]
+        Notification.objects.bulk_create(notifications)
+
     def get_permissions(self):
         if self.action == "create":
             return [AllowAny()]
@@ -103,25 +116,12 @@ class VeterinarianApplicationViewSet(viewsets.ModelViewSet):
         application.status = ApplicationStatus.APPROVED
         application.save()
         
-        # Create user with VETERINARIAN role
-        username = application.email.split('@')[0]
-        if User.objects.filter(username=username).exists():
-            username = f"{username}-{application.id.hex[:4]}"
-            
-        # In a real app, send email to set password. Here we generate a placeholder.
-        user = User.objects.create_user(
-            username=username,
-            email=application.email,
-            phone_number=application.phone_number,
-            first_name=application.first_name,
-            last_name=application.last_name,
-            password=f"Temp123!{application.phone_number}",
-            role="VETERINARIAN"
-        )
-        application.user = user
-        application.save()
+        # Activate the associated user account
+        if application.user:
+            application.user.is_active = True
+            application.user.save()
         
-        return Response({"detail": "Approved and User created."})
+        return Response({"detail": "Approved and User activated."})
 
     @action(detail=True, methods=["post"])
     def decline(self, request, pk=None):
@@ -131,4 +131,9 @@ class VeterinarianApplicationViewSet(viewsets.ModelViewSet):
         application = self.get_object()
         application.status = ApplicationStatus.DECLINED
         application.save()
+        
+        # Delete the inactive user to free up email/phone
+        if application.user and not application.user.is_active:
+            application.user.delete()
+            
         return Response({"detail": "Declined."})

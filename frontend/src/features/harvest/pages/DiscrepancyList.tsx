@@ -47,9 +47,9 @@ export const DiscrepancyList = () => {
     { header: 'Cooperative', accessor: (row: DiscrepancyFlag) => row.batch_details.cooperative },
     { header: 'Crop Type', accessor: (row: DiscrepancyFlag) => row.batch_details.crop_type },
     { header: 'Season', accessor: (row: DiscrepancyFlag) => row.batch_details.season_label },
-    { header: 'Ledger (kg)', accessor: (row: DiscrepancyFlag) => row.ledger_weight_kg?.toFixed(2) || '0' },
-    { header: 'Invoice (kg)', accessor: (row: DiscrepancyFlag) => row.invoice_weight_kg?.toFixed(2) || '0' },
-    { header: 'Drift (kg)', accessor: (row: DiscrepancyFlag) => row.drift_kg?.toFixed(2) || '0' },
+    { header: 'Ledger (kg)', accessor: (row: DiscrepancyFlag) => Number(row.ledger_weight_kg || 0).toFixed(2) || '0' },
+    { header: 'Invoice (kg)', accessor: (row: DiscrepancyFlag) => Number(row.invoice_weight_kg || 0).toFixed(2) || '0' },
+    { header: 'Drift (kg)', accessor: (row: DiscrepancyFlag) => Number(row.drift_kg || 0).toFixed(2) || '0' },
     { header: 'Status', accessor: (row: DiscrepancyFlag) => (
       <span className={`px-2 py-1 rounded text-xs ${row.resolved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
         {row.resolved ? 'Resolved' : 'Open'}

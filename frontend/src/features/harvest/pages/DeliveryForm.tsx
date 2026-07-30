@@ -24,18 +24,30 @@ export const DeliveryForm = () => {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [farmersResp, coopResp] = await Promise.all([
-          cooperativeService.listFarmers({ page_size: 200 }),
-          cooperativeService.listCooperatives({ page_size: 100 }),
-        ]);
-        setFarmers(farmersResp.results.map((f) => ({ id: f.id, full_name: f.full_name })));
-        setCooperatives(coopResp.results.map((c) => ({ id: c.id, name: c.name })));
+        if (user?.role === 'FARMER') {
+          const farmersResp = await cooperativeService.listFarmers({ user: user.id, page_size: 1 });
+          if (farmersResp.results.length > 0) {
+            const f = farmersResp.results[0];
+            setFormData(prev => ({
+              ...prev,
+              farmer: f.id,
+              cooperative: f.cooperative
+            }));
+          }
+        } else {
+          const [farmersResp, coopResp] = await Promise.all([
+            cooperativeService.listFarmers({ page_size: 200 }),
+            cooperativeService.listCooperatives({ page_size: 100 }),
+          ]);
+          setFarmers(farmersResp.results.map((f) => ({ id: f.id, full_name: f.full_name })));
+          setCooperatives(coopResp.results.map((c) => ({ id: c.id, name: c.name })));
+        }
       } catch (error) {
         console.error('Failed to load options', error);
       }
     };
     fetchOptions();
-  }, []);
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -82,37 +94,41 @@ export const DeliveryForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="form-group">
-            <label className="form-label">Farmer *</label>
-            <select
-              name="farmer"
-              value={formData.farmer}
-              onChange={handleChange}
-              required
-              className="form-select"
-            >
-              <option value="">Select farmer...</option>
-              {farmers.map((f) => (
-                <option key={f.id} value={f.id}>{f.full_name}</option>
-              ))}
-            </select>
-          </div>
+          {user?.role !== 'FARMER' && (
+            <div className="form-group">
+              <label className="form-label">Farmer *</label>
+              <select
+                name="farmer"
+                value={formData.farmer}
+                onChange={handleChange}
+                required
+                className="form-select"
+              >
+                <option value="">Select farmer...</option>
+                {farmers.map((f) => (
+                  <option key={f.id} value={f.id}>{f.full_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
-          <div className="form-group">
-            <label className="form-label">Cooperative *</label>
-            <select
-              name="cooperative"
-              value={formData.cooperative}
-              onChange={handleChange}
-              required
-              className="form-select"
-            >
-              <option value="">Select cooperative...</option>
-              {cooperatives.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          {user?.role !== 'FARMER' && (
+            <div className="form-group">
+              <label className="form-label">Cooperative *</label>
+              <select
+                name="cooperative"
+                value={formData.cooperative}
+                onChange={handleChange}
+                required
+                className="form-select"
+              >
+                <option value="">Select cooperative...</option>
+                {cooperatives.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Crop Type *</label>

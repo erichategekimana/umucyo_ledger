@@ -30,7 +30,7 @@ export const PayoutList = () => {
 
   const columns = [
     { header: 'Farmer', accessor: 'farmer_name' as keyof RevenueDistribution },
-    { header: 'Amount (RWF)', accessor: (row: RevenueDistribution) => row.amount?.toFixed(2) || '0' },
+    { header: 'Amount (RWF)', accessor: (row: RevenueDistribution) => Number(row.amount || 0).toFixed(2) || '0' },
     { header: 'Paid', accessor: (row: RevenueDistribution) => row.paid ? 'Yes' : 'No' },
     { header: 'Paid At', accessor: (row: RevenueDistribution) => row.paid_at ? new Date(row.paid_at).toLocaleString() : '-' },
     { header: 'Created', accessor: (row: RevenueDistribution) => new Date(row.created_at).toLocaleString() },

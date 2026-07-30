@@ -46,7 +46,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data, password=password)
         
         cooperative = Cooperative.objects.get(id=cooperative_id)
-        Farmer.objects.create(
+        farmer = Farmer.objects.create(
             user=user,
             cooperative=cooperative,
             national_id=f"TMP-{uuid.uuid4().hex[:12]}",
@@ -56,14 +56,48 @@ class RegisterSerializer(serializers.ModelSerializer):
             approved=False,
             status="PENDING"
         )
+        
+        # Notify Cooperative Admins
+        from apps.notifications.models import Notification
+        admins = User.objects.filter(role="ADMIN", staff_profile__cooperative=cooperative)
+        notifications = [
+            Notification(user=admin, message=f"New farmer application received from {farmer.full_name}.")
+            for admin in admins
+        ]
+        Notification.objects.bulk_create(notifications)
+        
         return user
 
 
 class VeterinarianApplicationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
     class Meta:
         model = VeterinarianApplication
         fields = '__all__'
         read_only_fields = ['status', 'user']
+
+    def create(self, validated_data):
+        import uuid
+        password = validated_data.pop('password')
+        
+        username = validated_data.get('email').split('@')[0]
+        if User.objects.filter(username=username).exists():
+            username = f"{username}-{uuid.uuid4().hex[:4]}"
+            
+        user = User.objects.create_user(
+            username=username,
+            email=validated_data.get('email'),
+            phone_number=validated_data.get('phone_number'),
+            first_name=validated_data.get('first_name'),
+            last_name=validated_data.get('last_name'),
+            password=password,
+            role="VETERINARIAN",
+            is_active=False
+        )
+        
+        validated_data['user'] = user
+        return super().create(validated_data)
 
 
 class UserSerializer(serializers.ModelSerializer):

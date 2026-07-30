@@ -10,6 +10,7 @@ export const VeterinarianRegistrationForm = ({ onSuccess }: { onSuccess: () => v
     phone_number: '',
     national_id: '',
     is_rwandan: 'true',
+    password: '',
   });
   
   const [files, setFiles] = useState<{
@@ -135,6 +136,11 @@ export const VeterinarianRegistrationForm = ({ onSuccess }: { onSuccess: () => v
               <option value="false">Foreigner</option>
             </select>
           </div>
+        </div>
+
+        <div className="form-group">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Password</label>
+          <input type="password" name="password" required value={formData.password} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all outline-none" placeholder="Create a secure password" />
         </div>
       </div>
 

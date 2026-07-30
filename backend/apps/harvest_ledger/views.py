@@ -68,7 +68,7 @@ class CropDeliveryViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [IsCollectionOfficer()]
+            return [IsAuthenticated()]  # Custom logic in perform_create limits to Farmer/Officer
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -86,16 +86,72 @@ class CropDeliveryViewSet(viewsets.ModelViewSet):
         return scoped_qs
 
     def perform_create(self, serializer):
-        """Logs delivery using model classmethod to trigger bottom-up aggregation and SMS receipt."""
+        """Logs delivery. FARMER = PENDING. COLLECTION_OFFICER = APPROVED."""
+        user = self.request.user
         farmer = serializer.validated_data["farmer"]
-        delivery = CropDelivery.log_delivery(
-            farmer=farmer,
-            cooperative=farmer.cooperative,
-            officer=self.request.user,
-            crop_type=serializer.validated_data["crop_type"],
-            weight_kg=serializer.validated_data["weight_kg"],
+        
+        if user.role == "FARMER":
+            if farmer.user != user:
+                raise DRFValidationError("Farmers can only log deliveries for themselves.")
+            delivery = CropDelivery.objects.create(
+                farmer=farmer,
+                cooperative=farmer.cooperative,
+                crop_type=serializer.validated_data["crop_type"],
+                weight_kg=serializer.validated_data["weight_kg"],
+                status=CropDelivery.Status.PENDING
+            )
+            serializer.instance = delivery
+            
+        elif user.role == "COLLECTION_OFFICER":
+            delivery = CropDelivery.log_delivery(
+                farmer=farmer,
+                cooperative=farmer.cooperative,
+                officer=user,
+                crop_type=serializer.validated_data["crop_type"],
+                weight_kg=serializer.validated_data["weight_kg"],
+            )
+            serializer.instance = delivery
+        else:
+            raise DRFValidationError("Only Farmers and Collection Officers can log deliveries.")
+
+    @action(detail=True, methods=["post"], permission_classes=[IsCollectionOfficer])
+    def approve(self, request, pk=None):
+        delivery = self.get_object()
+        if delivery.status != CropDelivery.Status.PENDING:
+            raise DRFValidationError("Only PENDING deliveries can be approved.")
+            
+        from django.utils import timezone
+        season_label = timezone.now().strftime("%Y-A")
+        batch, _ = BatchTotal.objects.get_or_create(
+            cooperative=delivery.cooperative,
+            crop_type=delivery.crop_type,
+            season_label=season_label,
+            status=BatchTotal.Status.OPEN,
+            defaults={"total_weight_kg": 0},
         )
-        serializer.instance = delivery
+        
+        delivery.status = CropDelivery.Status.APPROVED
+        delivery.officer = request.user
+        delivery.batch = batch
+        delivery.save()
+        
+        # Dispatch instant notification to farmer
+        from apps.notifications.services import NotificationService
+        NotificationService.dispatch_receipt(delivery)
+        
+        return Response(CropDeliverySerializer(delivery).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsCollectionOfficer])
+    def decline(self, request, pk=None):
+        delivery = self.get_object()
+        if delivery.status != CropDelivery.Status.PENDING:
+            raise DRFValidationError("Only PENDING deliveries can be declined.")
+            
+        delivery.status = CropDelivery.Status.DECLINED
+        delivery.officer = request.user
+        delivery.save()
+        
+        return Response(CropDeliverySerializer(delivery).data)
 
 
 class AdjustmentLogViewSet(viewsets.ModelViewSet):

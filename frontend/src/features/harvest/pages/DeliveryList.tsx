@@ -70,7 +70,7 @@ export const DeliveryList = () => {
     {
       header: 'Weight',
       accessor: (row: CropDelivery) => (
-        <span className="font-semibold text-emerald-700">{row.weight_kg?.toFixed(2)} kg</span>
+        <span className="font-semibold text-emerald-700">{Number(row.weight_kg || 0).toFixed(2)} kg</span>
       ),
     },
     {
@@ -87,6 +87,45 @@ export const DeliveryList = () => {
         <span className="text-slate-500 text-xs">{new Date(row.dropoff_time).toLocaleString()}</span>
       ),
     },
+    {
+      header: 'Status',
+      accessor: (row: CropDelivery) => {
+        if (row.status === 'PENDING') return <span className="badge-amber">Pending</span>;
+        if (row.status === 'DECLINED') return <span className="badge-red">Declined</span>;
+        return <span className="badge-green">Approved</span>;
+      },
+    },
+    ...(user?.role === 'COLLECTION_OFFICER' ? [{
+      header: 'Actions',
+      accessor: (row: CropDelivery) => (
+        row.status === 'PENDING' ? (
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await harvestService.approveDelivery(row.id);
+                  fetchData(page);
+                } catch (e) { console.error(e); }
+              }}
+              className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 font-semibold"
+            >
+              Approve
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await harvestService.declineDelivery(row.id);
+                  fetchData(page);
+                } catch (e) { console.error(e); }
+              }}
+              className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 font-semibold"
+            >
+              Decline
+            </button>
+          </div>
+        ) : null
+      )
+    }] : []),
   ];
 
   return (

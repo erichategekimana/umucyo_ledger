@@ -31,9 +31,9 @@ class CropDeliverySerializer(serializers.ModelSerializer):
         fields = [
             "id", "cooperative", "cooperative_name", "farmer", "farmer_name",
             "officer", "officer_username", "batch", "crop_type", "weight_kg",
-            "dropoff_time", "created_at"
+            "status", "dropoff_time", "created_at"
         ]
-        read_only_fields = ["id", "dropoff_time", "created_at"]
+        read_only_fields = ["id", "status", "dropoff_time", "created_at"]
 
 
 class AdjustmentLogSerializer(serializers.ModelSerializer):

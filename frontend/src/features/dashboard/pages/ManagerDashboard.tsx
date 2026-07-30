@@ -71,7 +71,7 @@ export const ManagerDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Total Harvest Weight"
-          value={`${totalWeight.toFixed(0)} kg`}
+          value={`${Number(totalWeight || 0).toFixed(0)} kg`}
           subtitle="All batches combined"
           icon={<Scale size={22} />}
           color="emerald"

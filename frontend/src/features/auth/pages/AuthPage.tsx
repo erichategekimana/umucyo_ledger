@@ -115,7 +115,7 @@ export const AuthPage = () => {
            <button onClick={() => setActiveTab('vet')} className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium ${activeTab === 'vet' ? 'bg-blue-500 text-white' : 'bg-white text-slate-600 border'}`}>Veterinarian</button>
         </div>
 
-        <div className="w-full max-w-[500px] bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+        <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
           
           <div className="mb-8">
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">

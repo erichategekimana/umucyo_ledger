@@ -20,11 +20,24 @@ class Notification(TimeStampedUUIDModel):
         on_delete=models.CASCADE,
         related_name="notifications",
         db_index=True,
+        null=True,
+        blank=True,
         help_text="The farmer receiving the SMS receipt."
+    )
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name="system_notifications",
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="The user receiving the system notification (e.g. Admin, Super Admin)."
     )
     delivery_id_str = models.CharField(
         max_length=64,
         db_index=True,
+        null=True,
+        blank=True,
         help_text="UUID string reference to the CropDelivery that triggered this notification."
     )
     message = models.TextField(

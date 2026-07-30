@@ -28,7 +28,6 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
     { to: ROUTES.AUDIT_REPORT, label: 'Audit Report', icon: <FileBarChart size={18} /> },
     { to: ROUTES.ANOMALIES, label: 'Anomalies', icon: <AlertTriangle size={18} /> },
     { to: ROUTES.ANOMALY_MAP, label: 'Anomaly Map', icon: <Map size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
     { to: ROUTES.USSD_LOGS, label: 'USSD Logs', icon: <Radio size={18} /> },
   ],
   ADMIN: [
@@ -42,7 +41,6 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
     { to: ROUTES.SALES, label: 'Sales', icon: <ShoppingCart size={18} /> },
     { to: ROUTES.PAYOUTS, label: 'Payouts', icon: <DollarSign size={18} /> },
     { to: ROUTES.ANOMALIES, label: 'Anomalies', icon: <AlertTriangle size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
     { to: ROUTES.USSD_LOGS, label: 'USSD Logs', icon: <Radio size={18} /> },
   ],
   MANAGER: [
@@ -51,24 +49,20 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
     { to: ROUTES.DELIVERIES, label: 'Deliveries', icon: <Truck size={18} /> },
     { to: ROUTES.SALES, label: 'Sales', icon: <ShoppingCart size={18} /> },
     { to: ROUTES.PAYOUTS, label: 'Payouts', icon: <DollarSign size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
   ],
   COLLECTION_OFFICER: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: ROUTES.DELIVERIES, label: 'All Deliveries', icon: <Truck size={18} /> },
     { to: ROUTES.DELIVERY_NEW, label: 'Log Delivery', icon: <Plus size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
   ],
   VETERINARIAN: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: ROUTES.ANOMALIES, label: 'Anomaly Reports', icon: <AlertTriangle size={18} /> },
     { to: ROUTES.ANOMALY_MAP, label: 'Map View', icon: <Map size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
   ],
   FARMER: [
     { to: ROUTES.DASHBOARD, label: 'My Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: ROUTES.DELIVERIES, label: 'My Deliveries', icon: <Truck size={18} /> },
-    { to: ROUTES.NOTIFICATIONS, label: 'Notifications', icon: <Bell size={18} /> },
   ],
 };
 

@@ -59,7 +59,7 @@ export const BatchList = () => {
     setActionLoading(id);
     try {
       const result = await harvestService.flagDiscrepancy(id, weight);
-      alert(`Flagged!\n• Ledger: ${result.ledger_weight_kg}kg\n• Invoice: ${result.invoice_weight_kg}kg\n• Drift: ${(result.ledger_weight_kg - result.invoice_weight_kg).toFixed(2)}kg`);
+      alert(`Flagged!\n• Ledger: ${result.ledger_weight_kg}kg\n• Invoice: ${result.invoice_weight_kg}kg\n• Drift: ${Number(result.ledger_weight_kg - result.invoice_weight_kg || 0).toFixed(2)}kg`);
       await fetchData(page);
     } catch (error) {
       alert('Failed to flag discrepancy.');
@@ -88,7 +88,7 @@ export const BatchList = () => {
     {
       header: 'Total Weight',
       accessor: (row: BatchTotal) => (
-        <span className="font-semibold text-emerald-700">{row.total_weight_kg?.toFixed(2)} kg</span>
+        <span className="font-semibold text-emerald-700">{Number(row.total_weight_kg || 0).toFixed(2)} kg</span>
       ),
     },
     {

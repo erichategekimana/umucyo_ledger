@@ -38,7 +38,7 @@ export const FarmerList = () => {
     { header: 'Phone', accessor: 'phone_number' as keyof Farmer },
     { header: 'National ID', accessor: 'national_id' as keyof Farmer },
     { header: 'Cooperative', accessor: 'cooperative_name' as keyof Farmer },
-    { header: 'Total Season Kg', accessor: (row: Farmer) => row.total_season_kg?.toFixed(2) || '0' },
+    { header: 'Total Season Kg', accessor: (row: Farmer) => Number(row.total_season_kg || 0).toFixed(2) || '0' },
     {
       header: 'Actions',
       accessor: (row: Farmer) => (

@@ -29,6 +29,14 @@ export class HarvestService extends BaseService {
     return this.post<CropDelivery>('/deliveries/', data);
   }
 
+  async approveDelivery(id: string): Promise<CropDelivery> {
+    return this.post<CropDelivery>(`/deliveries/${id}/approve/`);
+  }
+
+  async declineDelivery(id: string): Promise<CropDelivery> {
+    return this.post<CropDelivery>(`/deliveries/${id}/decline/`);
+  }
+
   // Adjustments - paginated
   async listAdjustments(params?: any): Promise<PaginatedResponse<AdjustmentLog>> {
     return this.getPaginated<AdjustmentLog>('/adjustments/', params);

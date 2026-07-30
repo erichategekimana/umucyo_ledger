@@ -22,6 +22,7 @@ export interface CropDelivery {
   batch: string;
   crop_type: string;
   weight_kg: number;
+  status: string;
   dropoff_time: string;
   created_at: string;
 }

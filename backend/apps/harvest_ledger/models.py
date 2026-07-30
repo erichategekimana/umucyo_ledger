@@ -125,6 +125,11 @@ class CropDelivery(TimeStampedUUIDModel):
     - `clean()` enforces bounds validation between 0.1 kg and 1,500 kg per delivery.
     """
 
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        DECLINED = "DECLINED", "Declined"
+
     cooperative = models.ForeignKey(
         Cooperative,
         on_delete=models.CASCADE,
@@ -143,7 +148,9 @@ class CropDelivery(TimeStampedUUIDModel):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="logged_deliveries",
-        help_text="The Collection Officer logging the delivery in the field."
+        null=True,
+        blank=True,
+        help_text="The Collection Officer logging or approving the delivery."
     )
     batch = models.ForeignKey(
         BatchTotal,
@@ -164,6 +171,13 @@ class CropDelivery(TimeStampedUUIDModel):
         decimal_places=2,
         help_text="Measured weight in kilograms (0.1 - 1,500 kg)."
     )
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.APPROVED,
+        db_index=True,
+        help_text="State of the delivery."
+    )
     dropoff_time = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
@@ -171,12 +185,12 @@ class CropDelivery(TimeStampedUUIDModel):
     )
 
     class Meta:
-        verbose_name = "Crop Delivery (Append-Only)"
-        verbose_name_plural = "Crop Deliveries (Append-Only)"
+        verbose_name = "Crop Delivery"
+        verbose_name_plural = "Crop Deliveries"
         ordering = ["-dropoff_time"]
 
     def __str__(self):
-        return f"{self.farmer.full_name} - {self.weight_kg}kg {self.crop_type}"
+        return f"{self.farmer.full_name} - {self.weight_kg}kg {self.crop_type} [{self.status}]"
 
     @property
     def effective_weight_kg(self):
@@ -197,20 +211,27 @@ class CropDelivery(TimeStampedUUIDModel):
         """
         if self.weight_kg is None or self.weight_kg < 0.1 or self.weight_kg > 1500:
             raise ValidationError("weight_kg must be strictly between 0.1 kg and 1,500 kg per delivery (FR 2.2).")
-        if self.batch and self.batch.status != BatchTotal.Status.OPEN:
-            raise ValidationError("Deliveries cannot be added to a LOCKED or SOLD batch.")
+        if self.status == self.Status.APPROVED:
+            if not self.batch:
+                raise ValidationError("An APPROVED delivery must be attached to a batch.")
+            if self.batch.status != BatchTotal.Status.OPEN:
+                raise ValidationError("Deliveries cannot be added to a LOCKED or SOLD batch.")
 
     def save(self, *args, **kwargs):
         """
         Implements The Fraud Block (Append-Only Enforcement):
-        If the record already exists (`self.pk` in database), raises a strict `ValidationError`
-        to prevent post-entry manipulation by any administrative user tier.
+        Allows creation, but if updating, only permits transition from PENDING to APPROVED/DECLINED.
         """
-        if self.pk and CropDelivery.objects.filter(pk=self.pk).exists():
-            raise ValidationError("CropDelivery records are append-only and cannot be modified once written (SRS Appendix B).")
+        if self.pk:
+            old_obj = CropDelivery.objects.filter(pk=self.pk).first()
+            if old_obj and old_obj.status != self.Status.PENDING:
+                raise ValidationError("CropDelivery records are append-only and cannot be modified once APPROVED or DECLINED.")
+            if old_obj and self.status == self.Status.PENDING:
+                raise ValidationError("Cannot update a PENDING delivery unless changing status to APPROVED or DECLINED.")
+        
         self.full_clean()
         super().save(*args, **kwargs)
-        if self.batch_id:
+        if self.status == self.Status.APPROVED and self.batch_id:
             self.batch.aggregate_deliveries()
 
     def delete(self, *args, **kwargs):

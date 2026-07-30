@@ -30,7 +30,7 @@ export const AdjustmentList = () => {
 
   const columns = [
     { header: 'Delivery ID', accessor: 'original_delivery' as keyof AdjustmentLog },
-    { header: 'Corrected Weight (kg)', accessor: (row: AdjustmentLog) => row.corrected_weight_kg?.toFixed(2) || '0' },
+    { header: 'Corrected Weight (kg)', accessor: (row: AdjustmentLog) => Number(row.corrected_weight_kg || 0).toFixed(2) || '0' },
     { header: 'Reason', accessor: 'reason' as keyof AdjustmentLog },
     { header: 'Approved By', accessor: 'approved_by_username' as keyof AdjustmentLog },
     { header: 'Created', accessor: (row: AdjustmentLog) => new Date(row.created_at).toLocaleString() },

@@ -38,6 +38,19 @@ class CooperativeViewSet(viewsets.ModelViewSet):
             
         return scoped_queryset(self.request, Cooperative, coop_field="id").order_by("name")
 
+    def perform_create(self, serializer):
+        cooperative = serializer.save()
+        
+        # Notify Super Admins
+        from apps.notifications.models import Notification
+        from apps.accounts.models import User
+        super_admins = User.objects.filter(role="SUPER_ADMIN")
+        notifications = [
+            Notification(user=sa, message=f"New cooperative application received from {cooperative.name}.")
+            for sa in super_admins
+        ]
+        Notification.objects.bulk_create(notifications)
+
     @action(detail=False, methods=["get"])
     def approved_list(self, request):
         district = request.query_params.get("district")

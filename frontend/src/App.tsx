@@ -73,11 +73,11 @@ function App() {
             <Route path={ROUTES.DELIVERIES} element={<DeliveryList />} />
           </Route>
 
-          {/* New delivery — Officers and above */}
+          {/* New delivery — Officers, Farmers, and above */}
           <Route
             element={
               <PrivateRoute
-                allowedRoles={['COLLECTION_OFFICER', 'ADMIN', 'SUPER_ADMIN']}
+                allowedRoles={['COLLECTION_OFFICER', 'ADMIN', 'SUPER_ADMIN', 'FARMER']}
               />
             }
           >
