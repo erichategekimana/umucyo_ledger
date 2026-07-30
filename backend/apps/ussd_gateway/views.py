@@ -13,6 +13,11 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from apps.cooperatives.models import Farmer
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from common.permissions import IsCooperativeAdmin, IsSuperAdminOrRCA
+from .models import USSDLog
+from .serializers import USSDLogSerializer
 
 logger = logging.getLogger("umucyo.audit")
 
@@ -44,6 +49,14 @@ def ussd_callback(request):
         response_text = (
             "END Muraho! Nimero yanyu ntabwo yanditswe muri Umucyo Ledger.\n"
             "Mwegere Koperative yanyu cyangwa Umukozi ubashinzwe kugira ngo biyandikishe."
+        )
+        USSDLog.objects.create(
+            session_id=session_id,
+            phone_number=phone_number,
+            text=text,
+            response=response_text,
+            menu_level=len(parts) if text else 0,
+            is_final=response_text.startswith("END"),
         )
         return _format_ussd_response(response_text, start_time)
 
@@ -150,3 +163,22 @@ def _format_ussd_response(response_text, start_time):
     else:
         logger.debug(f"USSD_RESP | duration={duration:.3f}s | response='{response_text[:40]}...'")
     return HttpResponse(response_text, content_type="text/plain; charset=utf-8")
+
+
+class USSDLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    List and retrieve USSD session logs.
+    Accessible only to Cooperative Admins and Super-Admins.
+    """
+    serializer_class = USSDLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # SuperAdmins see everything; Admins see only logs from their cooperative?
+        # Since USSD logs are tied to phone numbers, we can't easily scope by cooperative.
+        # For simplicity, we'll allow all authenticated users with admin-like permissions.
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') in ('SUPER_ADMIN', 'ADMIN'):
+            return USSDLog.objects.all().order_by('-created_at')
+        # Otherwise, return empty (or you could filter by farmers in that cooperative)
+        return USSDLog.objects.none()

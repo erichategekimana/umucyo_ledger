@@ -1,11 +1,11 @@
 import { BaseService } from './base.service';
-import { AnomalyReport } from '@/types';
+import { AnomalyReport, PaginatedResponse } from '@/types';
 
 export class AgronomyService extends BaseService {
   protected basePath = '';
 
-  async listAnomalies(params?: any): Promise<AnomalyReport[]> {
-    return this.get<AnomalyReport[]>('/anomalies/', params);
+  async listAnomalies(params?: any): Promise<PaginatedResponse<AnomalyReport>> {
+    return this.getPaginated<AnomalyReport>('/anomalies/', params);
   }
 
   async createAnomaly(data: any): Promise<AnomalyReport> {
@@ -19,6 +19,10 @@ export class AgronomyService extends BaseService {
   async updateAnomaly(id: string, data: any): Promise<AnomalyReport> {
     return this.put<AnomalyReport>(`/anomalies/${id}/`, data);
   }
+
+  async getAnomaly(id: string): Promise<AnomalyReport> {
+  return this.get<AnomalyReport>(`/anomalies/${id}/`);
+}
 }
 
 export const agronomyService = new AgronomyService();

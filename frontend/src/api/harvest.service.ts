@@ -1,12 +1,12 @@
 import { BaseService } from './base.service';
-import { BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag } from '@/types';
+import { BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, PaginatedResponse } from '@/types';
 
 export class HarvestService extends BaseService {
   protected basePath = '';
 
-  // Batches
-  async listBatches(params?: any): Promise<BatchTotal[]> {
-    return this.get<BatchTotal[]>('/batches/', params);
+  // Batches - use paginated
+  async listBatches(params?: any): Promise<PaginatedResponse<BatchTotal>> {
+    return this.getPaginated<BatchTotal>('/batches/', params);
   }
 
   async lockBatch(id: string): Promise<BatchTotal> {
@@ -20,23 +20,23 @@ export class HarvestService extends BaseService {
     );
   }
 
-  // Deliveries
-  async listDeliveries(params?: any): Promise<CropDelivery[]> {
-    return this.get<CropDelivery[]>('/deliveries/', params);
+  // Deliveries - paginated
+  async listDeliveries(params?: any): Promise<PaginatedResponse<CropDelivery>> {
+    return this.getPaginated<CropDelivery>('/deliveries/', params);
   }
 
   async createDelivery(data: any): Promise<CropDelivery> {
     return this.post<CropDelivery>('/deliveries/', data);
   }
 
-  // Adjustments
-  async listAdjustments(params?: any): Promise<AdjustmentLog[]> {
-    return this.get<AdjustmentLog[]>('/adjustments/', params);
+  // Adjustments - paginated
+  async listAdjustments(params?: any): Promise<PaginatedResponse<AdjustmentLog>> {
+    return this.getPaginated<AdjustmentLog>('/adjustments/', params);
   }
 
-  // Discrepancies
-  async listDiscrepancies(params?: any): Promise<DiscrepancyFlag[]> {
-    return this.get<DiscrepancyFlag[]>('/discrepancies/', params);
+  // Discrepancies - paginated
+  async listDiscrepancies(params?: any): Promise<PaginatedResponse<DiscrepancyFlag>> {
+    return this.getPaginated<DiscrepancyFlag>('/discrepancies/', params);
   }
 
   async resolveDiscrepancy(id: string): Promise<DiscrepancyFlag> {

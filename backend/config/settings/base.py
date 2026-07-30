@@ -4,21 +4,37 @@ Umucyo Ledger - Base Django Settings.
 Implements core industrial standards, modular domain applications, and strict
 PostgreSQL 16 connection setup per SRS Section 2.4.
 """
+import os
 from datetime import timedelta
 from pathlib import Path
 from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_FILE = BASE_DIR / ".env"
 
-SECRET_KEY = config(
-    "DJANGO_SECRET_KEY",
-    default="django-insecure-umucyo-ledger-v1-beta-key-change-in-production"
-)
 
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+def load_env_file():
+    """Load project-level .env values so Django uses the repository config instead of shell exports."""
+    if not ENV_FILE.exists():
+        return
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=Csv())
+    for raw_line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        os.environ[key.strip()] = value.strip().strip('"').strip("'")
+
+
+load_env_file()
+
+SECRET_KEY = config("DJANGO_SECRET_KEY")
+
+DEBUG = config("DJANGO_DEBUG", cast=bool)
+
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
 
 # Application definition - Multi-App Domain Architecture
 INSTALLED_APPS = [
@@ -83,11 +99,11 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="umucyo_ledger"),
-        "USER": config("DB_USER", default="umucyo"),
-        "PASSWORD": config("DB_PASSWORD", default="umucyo"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+        "NAME": config("DB_NAME"),
+        "USER": config("DB_USER"),
+        "PASSWORD": config("DB_PASSWORD"),
+        "HOST": config("DB_HOST"),
+        "PORT": config("DB_PORT"),
     }
 }
 
