@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User } from '@/types';
+import { User, RegisterRequest } from '@/types';
 import { authService } from '@/api/auth.service';
 
 interface AuthState {
@@ -10,6 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   refreshAccessToken: () => Promise<void>;
   loadUserFromStorage: () => void;
@@ -44,6 +45,17 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      register: async (data: RegisterRequest) => {
+        set({ isLoading: true });
+        try {
+          await authService.register(data);
+          set({ isLoading: false });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       logout: () => {
         set({
           user: null,
@@ -68,10 +80,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      loadUserFromStorage: () => {
-        // This is called on app start to restore state from persisted storage
-        // Zustand's persist middleware already does this, but we can add extra logic if needed.
-      },
+      loadUserFromStorage: () => {},
     }),
     {
       name: 'auth-storage',

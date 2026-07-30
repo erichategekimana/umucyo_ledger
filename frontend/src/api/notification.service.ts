@@ -7,6 +7,10 @@ export class NotificationService extends BaseService {
   async listNotifications(params?: any): Promise<PaginatedResponse<Notification>> {
     return this.getPaginated<Notification>('/notifications/', params);
   }
+
+  async markAsRead(id: string): Promise<Notification> {
+    return this.patch<Notification>(`/notifications/${id}/mark_read/`);
+  }
 }
 
 export const notificationService = new NotificationService();

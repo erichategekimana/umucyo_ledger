@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Sum
 from common.models import TimeStampedUUIDModel
+from apps.accounts.models import ApplicationStatus
 
 
 class Cooperative(TimeStampedUUIDModel):
@@ -36,6 +37,42 @@ class Cooperative(TimeStampedUUIDModel):
         db_index=True,
         help_text="District where the cooperative operates."
     )
+    
+    # Registration specific fields
+    preferred_name = models.CharField(
+        max_length=120,
+        blank=True,
+        null=True,
+        help_text="Optional short form or preferred name."
+    )
+    crop = models.CharField(
+        max_length=120,
+        default="Coffee",
+        help_text="Primary crop grown by the cooperative."
+    )
+    certificate = models.FileField(
+        upload_to="cooperative_certificates/",
+        null=True,
+        blank=True,
+        help_text="Certificate of Association issued by the RCA (PDF)."
+    )
+    tin_certificate = models.FileField(
+        upload_to="cooperative_tins/",
+        null=True,
+        blank=True,
+        help_text="Taxpayer Identification Number (TIN) certificate (PDF/PNG)."
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.PENDING,
+        help_text="Approval status by Super Admin."
+    )
+    
+    # Applicant admin details
+    admin_first_name = models.CharField(max_length=100, blank=True)
+    admin_last_name = models.CharField(max_length=100, blank=True)
+    admin_phone = models.CharField(max_length=20, blank=True)
 
     class Meta:
         verbose_name = "Cooperative"
@@ -117,6 +154,18 @@ class Farmer(TimeStampedUUIDModel):
     district = models.CharField(
         max_length=120,
         help_text="District where the farmer's agricultural plots are located."
+    )
+    
+    # Approval fields
+    approved = models.BooleanField(
+        default=False,
+        help_text="Whether the farmer is approved by the cooperative admin."
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.PENDING,
+        help_text="Current approval status."
     )
 
     class Meta:

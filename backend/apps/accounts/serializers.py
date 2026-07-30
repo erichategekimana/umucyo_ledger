@@ -3,15 +3,19 @@ Accounts Domain Serializers & Custom JWT Claims.
 """
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import User, Role
+from .models import User, Role, VeterinarianApplication
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    district = serializers.CharField(required=True, write_only=True)
+    cooperative_id = serializers.UUIDField(required=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ["username", "email", "phone_number", "password", "role", "preferred_language"]
+        fields = ["username", "email", "phone_number", "password", "role", "preferred_language", "first_name", "last_name", "district", "cooperative_id"]
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -24,8 +28,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        from apps.cooperatives.models import Farmer, Cooperative
+        import uuid
         password = validated_data.pop("password")
+        cooperative_id = validated_data.pop("cooperative_id")
+        district = validated_data.pop("district")
         username = validated_data.get("username")
+        
         if username and User.objects.filter(username=username).exists():
             suffix = 2
             candidate = f"{username}-{suffix}"
@@ -33,8 +42,28 @@ class RegisterSerializer(serializers.ModelSerializer):
                 suffix += 1
                 candidate = f"{username}-{suffix}"
             validated_data["username"] = candidate
+            
         user = User.objects.create_user(**validated_data, password=password)
+        
+        cooperative = Cooperative.objects.get(id=cooperative_id)
+        Farmer.objects.create(
+            user=user,
+            cooperative=cooperative,
+            national_id=f"TMP-{uuid.uuid4().hex[:12]}",
+            full_name=f"{user.first_name} {user.last_name}",
+            phone_number=user.phone_number,
+            district=district,
+            approved=False,
+            status="PENDING"
+        )
         return user
+
+
+class VeterinarianApplicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VeterinarianApplication
+        fields = '__all__'
+        read_only_fields = ['status', 'user']
 
 
 class UserSerializer(serializers.ModelSerializer):

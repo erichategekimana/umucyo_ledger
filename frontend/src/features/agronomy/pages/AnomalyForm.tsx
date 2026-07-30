@@ -71,7 +71,8 @@ export const AnomalyForm = () => {
       }
       navigate(ROUTES.ANOMALIES);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save anomaly');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to save anomaly.'));
     } finally {
       setLoading(false);
     }

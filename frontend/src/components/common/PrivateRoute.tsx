@@ -1,12 +1,14 @@
+import { ReactNode } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Role } from '@/types';
 
 interface PrivateRouteProps {
   allowedRoles?: Role[];
+  children?: ReactNode;
 }
 
-export const PrivateRoute = ({ allowedRoles }: PrivateRouteProps) => {
+export const PrivateRoute = ({ allowedRoles, children }: PrivateRouteProps) => {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
 
@@ -19,5 +21,5 @@ export const PrivateRoute = ({ allowedRoles }: PrivateRouteProps) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <Outlet />;
+  return children ? <>{children}</> : <Outlet />;
 };

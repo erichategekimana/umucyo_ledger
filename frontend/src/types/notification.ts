@@ -6,4 +6,5 @@ export interface Notification {
   delivery_id_str: string;
   message: string;
   sent_at: string;
+  is_read: boolean;
 }

@@ -46,7 +46,8 @@ export const CooperativeForm = () => {
       }
       navigate(ROUTES.COOPERATIVES);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save cooperative');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to save cooperative.'));
     } finally {
       setLoading(false);
     }

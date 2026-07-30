@@ -15,6 +15,17 @@ export abstract class BaseService {
     return response.data;
   }
 
+  protected async postFormData<T>(url: string = '', formData: FormData, config?: AxiosRequestConfig): Promise<T> {
+    const response = await apiClient.post<T>(`${this.basePath}${url}`, formData, {
+      ...config,
+      headers: {
+        ...config?.headers,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
   protected async put<T>(url: string = '', data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await apiClient.put<T>(`${this.basePath}${url}`, data, config);
     return response.data;
@@ -27,11 +38,6 @@ export abstract class BaseService {
 
   protected async delete<T>(url: string = '', config?: AxiosRequestConfig): Promise<T> {
     const response = await apiClient.delete<T>(`${this.basePath}${url}`, config);
-    return response.data;
-  }
-
-    protected async get<T>(url: string = '', config?: AxiosRequestConfig): Promise<T> {
-    const response = await apiClient.get<T>(`${this.basePath}${url}`, config);
     return response.data;
   }
 

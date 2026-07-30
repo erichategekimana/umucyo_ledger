@@ -4,6 +4,7 @@ import { harvestService } from '@/api/harvest.service';
 import { cooperativeService } from '@/api/cooperative.service';
 import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/hooks/useAuth';
+import { ArrowLeft, Send, AlertCircle } from 'lucide-react';
 
 export const DeliveryForm = () => {
   const navigate = useNavigate();
@@ -21,15 +22,14 @@ export const DeliveryForm = () => {
   });
 
   useEffect(() => {
-    // Load farmers and cooperatives for dropdowns
     const fetchOptions = async () => {
       try {
         const [farmersResp, coopResp] = await Promise.all([
           cooperativeService.listFarmers({ page_size: 200 }),
           cooperativeService.listCooperatives({ page_size: 100 }),
         ]);
-        setFarmers(farmersResp.results.map(f => ({ id: f.id, full_name: f.full_name })));
-        setCooperatives(coopResp.results.map(c => ({ id: c.id, name: c.name })));
+        setFarmers(farmersResp.results.map((f) => ({ id: f.id, full_name: f.full_name })));
+        setCooperatives(coopResp.results.map((c) => ({ id: c.id, name: c.name })));
       } catch (error) {
         console.error('Failed to load options', error);
       }
@@ -54,88 +54,125 @@ export const DeliveryForm = () => {
       });
       navigate(ROUTES.DELIVERIES);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create delivery');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to create delivery.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">New Delivery</h1>
-      {error && <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="max-w-xl mx-auto animate-fade-in">
+      <div className="page-header">
         <div>
-          <label className="block text-sm font-medium">Farmer</label>
-          <select
-            name="farmer"
-            value={formData.farmer}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          >
-            <option value="">Select farmer</option>
-            {farmers.map(f => (
-              <option key={f.id} value={f.id}>{f.full_name}</option>
-            ))}
-          </select>
+          <h1 className="page-title">Log New Delivery</h1>
+          <p className="page-subtitle">Record a farmer's crop drop-off at the collection point</p>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Cooperative</label>
-          <select
-            name="cooperative"
-            value={formData.cooperative}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          >
-            <option value="">Select cooperative</option>
-            {cooperatives.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Crop Type</label>
-          <input
-            type="text"
-            name="crop_type"
-            value={formData.crop_type}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Weight (kg)</label>
-          <input
-            type="number"
-            name="weight_kg"
-            value={formData.weight_kg}
-            onChange={handleChange}
-            required
-            min="0.1"
-            step="0.1"
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-          />
-        </div>
-        <div className="flex space-x-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(ROUTES.DELIVERIES)}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+        <button onClick={() => navigate(ROUTES.DELIVERIES)} className="btn-ghost">
+          <ArrowLeft size={16} /> Back
+        </button>
+      </div>
+
+      <div className="content-card p-6">
+        {error && (
+          <div className="alert-error mb-5">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="form-group">
+            <label className="form-label">Farmer *</label>
+            <select
+              name="farmer"
+              value={formData.farmer}
+              onChange={handleChange}
+              required
+              className="form-select"
+            >
+              <option value="">Select farmer...</option>
+              {farmers.map((f) => (
+                <option key={f.id} value={f.id}>{f.full_name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Cooperative *</label>
+            <select
+              name="cooperative"
+              value={formData.cooperative}
+              onChange={handleChange}
+              required
+              className="form-select"
+            >
+              <option value="">Select cooperative...</option>
+              {cooperatives.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Crop Type *</label>
+            <select
+              name="crop_type"
+              value={formData.crop_type}
+              onChange={(e) => setFormData({ ...formData, crop_type: e.target.value })}
+              required
+              className="form-select"
+            >
+              <option value="">Select crop type...</option>
+              {['Coffee', 'Tea', 'Pyrethrum', 'Maize', 'Beans', 'Sorghum', 'Other'].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Weight (kg) *</label>
+            <input
+              type="number"
+              name="weight_kg"
+              value={formData.weight_kg}
+              onChange={handleChange}
+              required
+              min="0.1"
+              step="0.1"
+              placeholder="e.g. 125.5"
+              className="form-input"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary flex-1"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Creating...
+                </span>
+              ) : (
+                <><Send size={16} /> Create Delivery</>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.DELIVERIES)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

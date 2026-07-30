@@ -40,5 +40,7 @@ export const ROUTES = {
   USSD_LOGS: '/ussd/logs',
   
   PROFILE: '/profile',
+  APPROVALS: '/approvals',
+  ROLE_MANAGEMENT: '/role-management',
   NOT_FOUND: '/404',
 } as const;

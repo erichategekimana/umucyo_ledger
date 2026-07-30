@@ -4,6 +4,7 @@ import { BatchTotal } from '@/types';
 import { Table } from '@/components/common/Table';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { Layers, Lock, Flag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const BatchList = () => {
   const { user } = useAuth();
@@ -11,18 +12,19 @@ export const BatchList = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [count, setCount] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const canLock = user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN';
-  const canFlag = user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN';
+  const canLock = user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const canFlag = user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   const fetchData = async (pageNum = 1) => {
     setLoading(true);
     try {
       const resp = await harvestService.listBatches({ page: pageNum, ordering: '-created_at' });
       setBatches(resp.results);
-      const pageSize = 25;
-      setTotalPages(Math.ceil(resp.count / pageSize));
+      setCount(resp.count);
+      setTotalPages(Math.ceil(resp.count / 25) || 1);
     } catch (error) {
       console.error('Failed to fetch batches', error);
     } finally {
@@ -30,16 +32,14 @@ export const BatchList = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData(page);
-  }, [page]);
+  useEffect(() => { fetchData(page); }, [page]);
 
   const handleLock = async (id: string) => {
-    if (!window.confirm('Lock this batch? This will freeze the total weight.')) return;
+    if (!window.confirm('Lock this batch? This will freeze the total weight and no new deliveries can be added.')) return;
     setActionLoading(id);
     try {
       await harvestService.lockBatch(id);
-      await fetchData(page); // refresh
+      await fetchData(page);
     } catch (error) {
       console.error('Failed to lock batch', error);
       alert('Failed to lock batch. It may already be locked.');
@@ -49,7 +49,7 @@ export const BatchList = () => {
   };
 
   const handleFlag = async (id: string) => {
-    const invoiceWeight = prompt('Enter invoice weight (kg):');
+    const invoiceWeight = prompt('Enter invoice weight (kg) to flag discrepancy:');
     if (invoiceWeight === null) return;
     const weight = parseFloat(invoiceWeight);
     if (isNaN(weight) || weight <= 0) {
@@ -59,10 +59,9 @@ export const BatchList = () => {
     setActionLoading(id);
     try {
       const result = await harvestService.flagDiscrepancy(id, weight);
-      alert(`Flagged! Ledger: ${result.ledger_weight_kg}kg, Invoice: ${result.invoice_weight_kg}kg, Drift: ${(result.ledger_weight_kg - result.invoice_weight_kg).toFixed(2)}kg`);
+      alert(`Flagged!\n• Ledger: ${result.ledger_weight_kg}kg\n• Invoice: ${result.invoice_weight_kg}kg\n• Drift: ${(result.ledger_weight_kg - result.invoice_weight_kg).toFixed(2)}kg`);
       await fetchData(page);
     } catch (error) {
-      console.error('Failed to flag discrepancy', error);
       alert('Failed to flag discrepancy.');
     } finally {
       setActionLoading(null);
@@ -70,36 +69,63 @@ export const BatchList = () => {
   };
 
   const columns = [
-    { header: 'Cooperative', accessor: 'cooperative_name' as keyof BatchTotal },
-    { header: 'Crop Type', accessor: 'crop_type' as keyof BatchTotal },
-    { header: 'Season', accessor: 'season_label' as keyof BatchTotal },
-    { header: 'Total Weight (kg)', accessor: (row: BatchTotal) => row.total_weight_kg?.toFixed(2) || '0' },
-    { header: 'Status', accessor: (row: BatchTotal) => (
-      <span className={`px-2 py-1 rounded text-xs ${row.status === 'LOCKED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-        {row.status}
-      </span>
-    )},
-    { header: 'Created', accessor: (row: BatchTotal) => new Date(row.created_at).toLocaleDateString() },
+    {
+      header: 'Cooperative',
+      accessor: (row: BatchTotal) => (
+        <span className="font-semibold text-slate-800">{row.cooperative_name}</span>
+      ),
+    },
+    {
+      header: 'Crop Type',
+      accessor: (row: BatchTotal) => (
+        <span className="badge-green">{row.crop_type}</span>
+      ),
+    },
+    {
+      header: 'Season',
+      accessor: 'season_label' as keyof BatchTotal,
+    },
+    {
+      header: 'Total Weight',
+      accessor: (row: BatchTotal) => (
+        <span className="font-semibold text-emerald-700">{row.total_weight_kg?.toFixed(2)} kg</span>
+      ),
+    },
+    {
+      header: 'Status',
+      accessor: (row: BatchTotal) =>
+        row.status === 'LOCKED' ? (
+          <span className="badge-gray"><Lock size={10} /> Locked</span>
+        ) : (
+          <span className="badge-yellow">Open</span>
+        ),
+    },
+    {
+      header: 'Created',
+      accessor: (row: BatchTotal) => (
+        <span className="text-slate-500 text-xs">{new Date(row.created_at).toLocaleDateString()}</span>
+      ),
+    },
     {
       header: 'Actions',
       accessor: (row: BatchTotal) => (
-        <div className="flex space-x-2">
+        <div className="flex gap-2">
           {canLock && row.status === 'OPEN' && (
             <button
               onClick={() => handleLock(row.id)}
               disabled={actionLoading === row.id}
-              className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+              className="btn-secondary text-xs px-3 py-1.5"
             >
-              {actionLoading === row.id ? '...' : 'Lock'}
+              <Lock size={13} /> {actionLoading === row.id ? '…' : 'Lock'}
             </button>
           )}
           {canFlag && (
             <button
               onClick={() => handleFlag(row.id)}
               disabled={actionLoading === row.id}
-              className="text-red-600 hover:text-red-900 disabled:opacity-50"
+              className="btn text-xs px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
             >
-              {actionLoading === row.id ? '...' : 'Flag'}
+              <Flag size={13} /> {actionLoading === row.id ? '…' : 'Flag'}
             </button>
           )}
         </div>
@@ -107,35 +133,37 @@ export const BatchList = () => {
     },
   ];
 
-  if (loading && !batches.length) return <LoadingSpinner />;
-
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Batches</h1>
-      <Table
-        data={batches}
-        columns={columns}
-        keyExtractor={(row) => row.id}
-        loading={loading}
-        emptyMessage="No batches found"
-      />
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Harvest Batches</h1>
+          <p className="page-subtitle">{count} batches total</p>
+        </div>
+      </div>
+
+      <div className="content-card">
+        <Table
+          data={batches}
+          columns={columns}
+          keyExtractor={(row) => row.id}
+          loading={loading}
+          emptyMessage="No batches found"
+          emptyIcon={<Layers size={36} className="text-slate-200" />}
+        />
+      </div>
+
       {totalPages > 1 && (
-        <div className="flex justify-center mt-4 space-x-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1">Page {page} of {totalPages}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Next
-          </button>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-500">Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-40">
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-secondary disabled:opacity-40">
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

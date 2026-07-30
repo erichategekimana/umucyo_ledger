@@ -1,5 +1,9 @@
-export const LoadingSpinner = () => (
-  <div className="flex justify-center items-center h-32">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+export const LoadingSpinner = ({ message = 'Loading...' }: { message?: string }) => (
+  <div className="flex flex-col items-center justify-center h-64 gap-4">
+    <div className="relative w-12 h-12">
+      <div className="absolute inset-0 rounded-full border-4 border-emerald-100" />
+      <div className="absolute inset-0 rounded-full border-4 border-t-emerald-500 animate-spin" />
+    </div>
+    <p className="text-sm text-slate-500 font-medium">{message}</p>
   </div>
 );

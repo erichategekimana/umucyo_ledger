@@ -64,7 +64,8 @@ export const StaffForm = () => {
       }
       navigate(ROUTES.STAFF);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save staff');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to save staff.'));
     } finally {
       setLoading(false);
     }

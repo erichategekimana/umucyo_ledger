@@ -10,8 +10,24 @@ class CooperativeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cooperative
-        fields = ["id", "name", "rca_registration_no", "sector", "district", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = [
+            "id", "name", "rca_registration_no", "sector", "district",
+            "preferred_name", "crop", "certificate", "tin_certificate",
+            "status", "admin_first_name", "admin_last_name", "admin_phone",
+            "created_at", "updated_at"
+        ]
+        read_only_fields = ["id", "status", "created_at", "updated_at"]
+
+
+class CooperativeRegistrationSerializer(serializers.ModelSerializer):
+    """Handles the public submission of Cooperative Applications."""
+    class Meta:
+        model = Cooperative
+        fields = [
+            "name", "rca_registration_no", "sector", "district",
+            "preferred_name", "crop", "certificate", "tin_certificate",
+            "admin_first_name", "admin_last_name", "admin_phone"
+        ]
 
 
 class CooperativeStaffSerializer(serializers.ModelSerializer):
@@ -44,7 +60,7 @@ class FarmerSerializer(serializers.ModelSerializer):
         model = Farmer
         fields = [
             "id", "user", "cooperative", "cooperative_name", "national_id",
-            "full_name", "phone_number", "district", "total_season_kg",
+            "full_name", "phone_number", "district", "approved", "status", "total_season_kg",
             "created_at", "updated_at"
         ]
         read_only_fields = ["id", "total_season_kg", "created_at", "updated_at"]

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { harvestService } from '@/api/harvest.service';
 import { CropDelivery } from '@/types';
@@ -6,7 +6,8 @@ import { Table } from '@/components/common/Table';
 import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { cooperativeService } from '../../../api/cooperative.service';
+import { cooperativeService } from '@/api/cooperative.service';
+import { Plus, Truck, ChevronLeft, ChevronRight, Scale } from 'lucide-react';
 
 export const DeliveryList = () => {
   const { user } = useAuth();
@@ -14,94 +15,131 @@ export const DeliveryList = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [count, setCount] = useState(0);
   const [farmerId, setFarmerId] = useState<string | null>(null);
 
-  const canCreate = user?.role === 'COLLECTION_OFFICER' || user?.role === 'SUPER_ADMIN';
-
-  const fetchData = async (pageNum = 1) => {
-    setLoading(true);
-    try {
-      const resp = await harvestService.listDeliveries({ page: pageNum, ordering: '-dropoff_time' });
-      setDeliveries(resp.results);
-      const pageSize = 25;
-      setTotalPages(Math.ceil(resp.count / pageSize));
-    } catch (error) {
-      console.error('Failed to fetch deliveries', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const canCreate = user?.role === 'COLLECTION_OFFICER' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
 
   useEffect(() => {
-
-      if (user?.role === 'FARMER') {
-        // Fetch the farmer's profile to get ID
-        cooperativeService.listFarmers({ user: user.id, page_size: 1 })
-        .then(resp => {
-            if (resp.results.length > 0) {
-            setFarmerId(resp.results[0].id);
-            }
+    if (user?.role === 'FARMER' && user.id) {
+      cooperativeService
+        .listFarmers({ user: user.id, page_size: 1 })
+        .then((resp) => {
+          if (resp.results && resp.results.length > 0) setFarmerId(resp.results[0].id);
         })
-        .catch(console.error);
+        .catch((err) => console.error('Failed to resolve farmer profile:', err));
     }
-    }, [user]);
+  }, [user]);
 
+  const fetchData = useCallback(
+    async (pageNum = 1) => {
+      setLoading(true);
+      try {
+        const params: Record<string, any> = { page: pageNum, ordering: '-dropoff_time' };
+        if (user?.role === 'FARMER' && farmerId) params.farmer = farmerId;
+        const resp = await harvestService.listDeliveries(params);
+        setDeliveries(resp.results);
+        setCount(resp.count);
+        setTotalPages(Math.ceil(resp.count / 25) || 1);
+      } catch (error) {
+        console.error('Failed to fetch deliveries', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [farmerId, user?.role]
+  );
 
+  useEffect(() => {
     fetchData(page);
-    // In fetchData, add filter:
-const params: any = { page: pageNum, ordering: '-dropoff_time' };
-if (farmerId) params.farmer = farmerId;
-const resp = await harvestService.listDeliveries(params);
-  }, [page]);
+  }, [page, fetchData]);
 
   const columns = [
-    { header: 'Farmer', accessor: 'farmer_name' as keyof CropDelivery },
-    { header: 'Crop Type', accessor: 'crop_type' as keyof CropDelivery },
-    { header: 'Weight (kg)', accessor: (row: CropDelivery) => row.weight_kg?.toFixed(2) || '0' },
-    { header: 'Officer', accessor: 'officer_username' as keyof CropDelivery },
-    { header: 'Cooperative', accessor: 'cooperative_name' as keyof CropDelivery },
-    { header: 'Drop-off Time', accessor: (row: CropDelivery) => new Date(row.dropoff_time).toLocaleString() },
+    {
+      header: 'Farmer',
+      accessor: (row: CropDelivery) => (
+        <span className="font-semibold text-slate-800">{row.farmer_name || '—'}</span>
+      ),
+    },
+    {
+      header: 'Crop Type',
+      accessor: (row: CropDelivery) => (
+        <span className="badge-green">{row.crop_type}</span>
+      ),
+    },
+    {
+      header: 'Weight',
+      accessor: (row: CropDelivery) => (
+        <span className="font-semibold text-emerald-700">{row.weight_kg?.toFixed(2)} kg</span>
+      ),
+    },
+    {
+      header: 'Officer',
+      accessor: 'officer_username' as keyof CropDelivery,
+    },
+    {
+      header: 'Cooperative',
+      accessor: 'cooperative_name' as keyof CropDelivery,
+    },
+    {
+      header: 'Drop-off Time',
+      accessor: (row: CropDelivery) => (
+        <span className="text-slate-500 text-xs">{new Date(row.dropoff_time).toLocaleString()}</span>
+      ),
+    },
   ];
 
-  if (loading && !deliveries.length) return <LoadingSpinner />;
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Deliveries</h1>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            {user?.role === 'FARMER' ? 'My Deliveries' : 'Crop Deliveries'}
+          </h1>
+          <p className="page-subtitle">
+            {count} {count === 1 ? 'delivery' : 'deliveries'} total
+            {user?.role === 'FARMER' && ' · Showing only your records'}
+          </p>
+        </div>
         {canCreate && (
-          <Link
-            to={ROUTES.DELIVERY_NEW}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          >
-            New Delivery
+          <Link to={ROUTES.DELIVERY_NEW} className="btn-primary">
+            <Plus size={16} /> Log Delivery
           </Link>
         )}
       </div>
-      <Table
-        data={deliveries}
-        columns={columns}
-        keyExtractor={(row) => row.id}
-        loading={loading}
-        emptyMessage="No deliveries found"
-      />
+
+      <div className="content-card">
+        <Table
+          data={deliveries}
+          columns={columns}
+          keyExtractor={(row) => row.id}
+          loading={loading}
+          emptyMessage="No deliveries found"
+          emptyIcon={<Truck size={36} className="text-slate-200" />}
+        />
+      </div>
+
       {totalPages > 1 && (
-        <div className="flex justify-center mt-4 space-x-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1">Page {page} of {totalPages}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Next
-          </button>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            Page {page} of {totalPages} · {count} total records
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="btn-secondary disabled:opacity-40"
+            >
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="btn-secondary disabled:opacity-40"
+            >
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

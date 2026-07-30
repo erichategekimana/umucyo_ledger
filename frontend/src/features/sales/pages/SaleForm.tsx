@@ -73,7 +73,8 @@ export const SaleForm = () => {
       });
       navigate(ROUTES.SALES);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create sale');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to create sale.'));
     } finally {
       setLoading(false);
     }

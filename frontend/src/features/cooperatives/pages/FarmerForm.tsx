@@ -53,7 +53,8 @@ export const FarmerForm = () => {
       }
       navigate(ROUTES.FARMERS);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save farmer');
+      const { handleApiError } = await import('@/utils/errorHandler');
+      setError(handleApiError(err, 'Failed to save farmer.'));
     } finally {
       setLoading(false);
     }

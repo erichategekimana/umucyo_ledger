@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { salesService } from '@/api/sales.service';
 import { cooperativeService } from '@/api/cooperative.service';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,8 +19,7 @@ export const AuditReport = () => {
   const [error, setError] = useState('');
   const [cooperatives, setCooperatives] = useState<{ id: string; name: string }[]>([]);
 
-  // Load cooperatives for dropdown (only if SuperAdmin)
-  useState(() => {
+  useEffect(() => {
     if (user?.role === 'SUPER_ADMIN') {
       cooperativeService.listCooperatives({ page_size: 100 })
         .then(resp => setCooperatives(resp.results.map(c => ({ id: c.id, name: c.name }))))

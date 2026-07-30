@@ -63,11 +63,27 @@ class CropDeliveryViewSet(viewsets.ModelViewSet):
     level and model layer.
     """
     serializer_class = CropDeliverySerializer
-    permission_classes = [IsCollectionOfficer]
+    permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head", "options"]
 
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsCollectionOfficer()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
-        return scoped_queryset(self.request, CropDelivery).order_by("-dropoff_time")
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return CropDelivery.objects.none()
+
+        if getattr(user, "role", "") == "FARMER":
+            return CropDelivery.objects.filter(farmer__user=user).order_by("-dropoff_time")
+
+        scoped_qs = scoped_queryset(self.request, CropDelivery).order_by("-dropoff_time")
+        farmer_id = self.request.query_params.get("farmer")
+        if farmer_id:
+            scoped_qs = scoped_qs.filter(farmer_id=farmer_id)
+        return scoped_qs
 
     def perform_create(self, serializer):
         """Logs delivery using model classmethod to trigger bottom-up aggregation and SMS receipt."""

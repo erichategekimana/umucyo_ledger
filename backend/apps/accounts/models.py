@@ -63,3 +63,44 @@ class User(AbstractUser, TimeStampedUUIDModel):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+
+
+class ApplicationStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    DECLINED = "DECLINED", "Declined"
+
+
+class VeterinarianApplication(TimeStampedUUIDModel):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="vet_application",
+        null=True,
+        blank=True,
+        help_text="Link to User account once approved."
+    )
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20, unique=True)
+    email = models.EmailField(unique=True)
+    national_id = models.CharField(max_length=32, unique=True, help_text="National ID or Passport number")
+    is_rwandan = models.BooleanField(default=True, help_text="Nationality: Rwandan or Foreigner")
+    
+    # Documents
+    national_id_document = models.FileField(upload_to="vet_applications/ids/")
+    degree_certificate = models.FileField(upload_to="vet_applications/degrees/")
+    transcripts = models.FileField(upload_to="vet_applications/transcripts/")
+    proof_of_internship = models.FileField(upload_to="vet_applications/internships/")
+    rcvd_certificate = models.FileField(upload_to="vet_applications/rcvd/", help_text="Certificate of Registration (The Roll Certificate) from RCVD")
+    annual_practicing_license = models.FileField(upload_to="vet_applications/licenses/")
+    
+    status = models.CharField(max_length=20, choices=ApplicationStatus.choices, default=ApplicationStatus.PENDING)
+
+    class Meta:
+        verbose_name = "Veterinarian Application"
+        verbose_name_plural = "Veterinarian Applications"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.status})"

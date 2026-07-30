@@ -35,6 +35,11 @@ class Notification(TimeStampedUUIDModel):
         db_index=True,
         help_text="Timestamp when the SMS notification was generated and dispatched."
     )
+    is_read = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Read status flag for the notification."
+    )
 
     class Meta:
         verbose_name = "SMS Receipt Notification"

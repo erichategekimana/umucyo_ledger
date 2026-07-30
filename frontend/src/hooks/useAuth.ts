@@ -2,7 +2,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useMemo } from 'react';
 
 export const useAuth = () => {
-  const { user, isAuthenticated, login, logout, refreshAccessToken, isLoading } = useAuthStore();
+  const { user, isAuthenticated, login, register, logout, refreshAccessToken, isLoading } = useAuthStore();
 
   return useMemo(
     () => ({
@@ -10,10 +10,11 @@ export const useAuth = () => {
       isAuthenticated,
       isLoading,
       login,
+      register,
       logout,
       refreshAccessToken,
       role: user?.role || null,
     }),
-    [user, isAuthenticated, isLoading, login, logout, refreshAccessToken]
+    [user, isAuthenticated, isLoading, login, register, logout, refreshAccessToken]
   );
 };

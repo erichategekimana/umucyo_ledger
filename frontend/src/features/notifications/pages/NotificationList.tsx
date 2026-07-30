@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { notificationService } from '@/api/notification.service';
 import { Notification } from '@/types';
-import { Table } from '@/components/common/Table';
 import { useAuth } from '@/hooks/useAuth';
 import { cooperativeService } from '@/api/cooperative.service';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { Bell, CheckCheck, Clock, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 
 export const NotificationList = () => {
   const { user } = useAuth();
@@ -12,133 +12,195 @@ export const NotificationList = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [count, setCount] = useState(0);
   const [farmerId, setFarmerId] = useState<string | null>(null);
-
-  // Filters
-  const [farmerFilter, setFarmerFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
 
-  // Fetch farmer ID if user is FARMER
   useEffect(() => {
-    if (user?.role === 'FARMER') {
-      cooperativeService.listFarmers({ user: user.id, page_size: 1 })
-        .then(resp => {
-          if (resp.results.length > 0) {
-            setFarmerId(resp.results[0].id);
-            setFarmerFilter(resp.results[0].id);
-          }
-        })
+    if (user?.role === 'FARMER' && user.id) {
+      cooperativeService
+        .listFarmers({ user: user.id, page_size: 1 })
+        .then((resp) => { if (resp.results.length > 0) setFarmerId(resp.results[0].id); })
         .catch(console.error);
     }
   }, [user]);
 
-  const fetchData = async (pageNum = 1) => {
+  const fetchData = useCallback(async (pageNum = 1) => {
     setLoading(true);
     try {
-      const params: any = { page: pageNum, ordering: '-sent_at' };
-      if (farmerFilter) params.farmer = farmerFilter;
+      const params: Record<string, any> = { page: pageNum, ordering: '-sent_at' };
+      if (user?.role === 'FARMER' && farmerId) params.farmer = farmerId;
       if (startDate) params.sent_at__gte = startDate;
       if (endDate) params.sent_at__lte = endDate;
-
+      if (readFilter === 'unread') params.is_read = 'false';
+      if (readFilter === 'read') params.is_read = 'true';
       const resp = await notificationService.listNotifications(params);
       setNotifications(resp.results);
-      const pageSize = 25;
-      setTotalPages(Math.ceil(resp.count / pageSize));
+      setCount(resp.count);
+      setTotalPages(Math.ceil(resp.count / 25) || 1);
     } catch (error) {
       console.error('Failed to fetch notifications', error);
     } finally {
       setLoading(false);
     }
+  }, [farmerId, user?.role, startDate, endDate, readFilter]);
+
+  useEffect(() => { fetchData(page); }, [page, fetchData]);
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const updated = await notificationService.markAsRead(id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: updated.is_read } : n)));
+    } catch (err) {
+      console.error('Failed to mark as read', err);
+    }
   };
 
-  useEffect(() => {
-    fetchData(page);
-  }, [page, farmerFilter, startDate, endDate]);
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setReadFilter('all');
+    setPage(1);
+  };
 
-  // Only show farmer filter if not a farmer (since they're already filtered)
-  const showFarmerFilter = user?.role !== 'FARMER';
+  if (loading && !notifications.length) return <LoadingSpinner message="Loading notifications..." />;
 
-  const columns = [
-    { header: 'Farmer', accessor: 'farmer_name' as keyof Notification },
-    { header: 'Phone', accessor: 'farmer_phone' as keyof Notification },
-    { header: 'Delivery ID', accessor: 'delivery_id_str' as keyof Notification },
-    { header: 'Message', accessor: (row: Notification) => row.message.slice(0, 60) + (row.message.length > 60 ? '...' : '') },
-    { header: 'Sent At', accessor: (row: Notification) => new Date(row.sent_at).toLocaleString() },
-  ];
-
-  if (loading && !notifications.length) return <LoadingSpinner />;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Notifications</h1>
-      <div className="bg-white p-4 rounded shadow mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {showFarmerFilter && (
-            <div>
-              <label className="block text-sm font-medium">Farmer</label>
-              <input
-                type="text"
-                placeholder="Farmer ID or name"
-                value={farmerFilter}
-                onChange={(e) => setFarmerFilter(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              />
-            </div>
-          )}
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Notifications</h1>
+          <p className="page-subtitle">
+            {count} total · {unreadCount > 0 ? <span className="text-amber-600 font-semibold">{unreadCount} unread</span> : 'All read'}
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="content-card p-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          {/* Read status filter */}
           <div>
-            <label className="block text-sm font-medium">Start Date</label>
+            <label className="form-label text-xs">Status</label>
+            <div className="flex gap-1">
+              {(['all', 'unread', 'read'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => { setReadFilter(v); setPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    readFilter === v
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label text-xs">From</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              className="form-input text-xs py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium">End Date</label>
+            <label className="form-label text-xs">To</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              className="form-input text-xs py-2"
             />
           </div>
-        </div>
-        <div className="mt-4 flex space-x-2">
-          <button
-            onClick={() => { setFarmerFilter(''); setStartDate(''); setEndDate(''); }}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-          >
-            Clear Filters
-          </button>
+
+          {(startDate || endDate || readFilter !== 'all') && (
+            <button onClick={clearFilters} className="btn-ghost text-xs flex items-center gap-1">
+              <X size={14} /> Clear filters
+            </button>
+          )}
         </div>
       </div>
 
-      <Table
-        data={notifications}
-        columns={columns}
-        keyExtractor={(row) => row.id}
-        loading={loading}
-        emptyMessage="No notifications found"
-      />
+      {/* Notification list */}
+      <div className="content-card divide-y divide-slate-50">
+        {loading ? (
+          <LoadingSpinner />
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <Bell size={40} className="text-slate-200 mb-3" />
+            <p className="font-medium">No notifications found</p>
+          </div>
+        ) : (
+          notifications.map((n) => (
+            <div
+              key={n.id}
+              className={`flex items-start gap-4 p-5 transition-colors ${
+                !n.is_read ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-slate-50'
+              }`}
+            >
+              {/* Icon */}
+              <div className={`shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center ${
+                n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'
+              }`}>
+                <Bell size={16} />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-semibold text-sm text-slate-800">{n.farmer_name}</span>
+                  {!n.is_read && <span className="badge-yellow text-[10px]">Unread</span>}
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">{n.message}</p>
+                <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                  <Clock size={11} />
+                  {new Date(n.sent_at).toLocaleString()}
+                  {n.farmer_phone && (
+                    <span className="ml-2 text-slate-400">· {n.farmer_phone}</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Action */}
+              <div className="shrink-0">
+                {!n.is_read ? (
+                  <button
+                    onClick={() => handleMarkAsRead(n.id)}
+                    className="btn-secondary text-xs px-3 py-1.5"
+                  >
+                    <CheckCheck size={13} /> Mark Read
+                  </button>
+                ) : (
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <CheckCheck size={13} className="text-emerald-500" /> Read
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       {totalPages > 1 && (
-        <div className="flex justify-center mt-4 space-x-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1">Page {page} of {totalPages}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Next
-          </button>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-500">Page {page} of {totalPages} · {count} total</span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary disabled:opacity-40">
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-secondary disabled:opacity-40">
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>
