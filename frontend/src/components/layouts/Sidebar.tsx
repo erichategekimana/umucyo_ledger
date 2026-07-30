@@ -1,0 +1,66 @@
+import { Link, useLocation } from 'react-router-dom';
+import { ROUTES } from '@/config/routes';
+import { useAuth } from '@/hooks/useAuth';
+import { Role } from '@/types';
+
+const roleMenuMap: Record<Role, Array<{ to: string; label: string }>> = {
+  SUPER_ADMIN: [
+    { to: ROUTES.DASHBOARD, label: 'Dashboard' },
+    { to: ROUTES.COOPERATIVES, label: 'Cooperatives' },
+    { to: ROUTES.USSD, label: 'USSD Logs' },
+  ],
+  ADMIN: [
+    { to: ROUTES.DASHBOARD, label: 'Dashboard' },
+    { to: ROUTES.COOPERATIVES, label: 'Cooperatives' },
+    { to: ROUTES.HARVEST, label: 'Harvest' },
+  ],
+  MANAGER: [
+    { to: ROUTES.DASHBOARD, label: 'Dashboard' },
+    { to: ROUTES.HARVEST, label: 'Harvest' },
+    { to: ROUTES.SALES, label: 'Sales' },
+  ],
+  COLLECTION_OFFICER: [
+    { to: ROUTES.DASHBOARD, label: 'Dashboard' },
+    { to: ROUTES.HARVEST, label: 'Batch Entry' },
+  ],
+  VETERINARIAN: [
+    { to: ROUTES.DASHBOARD, label: 'Dashboard' },
+    { to: ROUTES.AGRONOMY, label: 'Health Reports' },
+  ],
+  FARMER: [
+    { to: ROUTES.DASHBOARD, label: 'My Dashboard' },
+    { to: ROUTES.HARVEST, label: 'My Batches' },
+  ],
+};
+
+interface SidebarProps {
+  collapsed: boolean;
+}
+
+export const Sidebar = ({ collapsed }: SidebarProps) => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const role = user?.role as Role;
+  const menuItems = role ? roleMenuMap[role] || [] : [];
+
+  return (
+    <aside className={`bg-white shadow-md transition-all ${collapsed ? 'w-16' : 'w-64'}`}>
+      <div className="p-4">
+        {!collapsed && <h2 className="text-lg font-bold">Umucyo Ledger</h2>}
+      </div>
+      <nav className="mt-4">
+        {menuItems.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className={`block px-4 py-2 hover:bg-gray-200 ${
+              location.pathname === item.to ? 'bg-gray-100 font-semibold' : ''
+            }`}
+          >
+            {collapsed ? item.label[0] : item.label}
+          </Link>
+        ))}
+      </nav>
+    </aside>
+  );
+};
