@@ -1,107 +1,167 @@
-# Umucyo Ledger — v1.0.0-Beta (first build)
+# Umucyo Ledger
 
-A working first cut of the platform described in the SRS: Django/PostgreSQL
-backend, a REST API, a USSD gateway simulator for farmers, and a React
-(no-build) dashboard for cooperative staff, veterinarians, and RCA regulators.
+Umucyo Ledger is a comprehensive, role-based platform designed to manage cooperative agricultural operations. It bridges the gap between smallholder farmers, cooperative staff, veterinarians, and regulators (RCA). The platform provides a robust Django/PostgreSQL backend REST API, a modern React (Vite/Tailwind) web dashboard, and a USSD gateway simulator for offline farmer access.
 
-This is a **first working slice**, not the finished product — see "What's
-built" / "What's next" below.
+## Key Features
 
-## Quick start (SQLite, zero config)
+- **Role-Based Access Control (RBAC):** Distinct dashboards and permissions for Farmers, Collection Officers, Managers, Admins, Veterinarians, and Super-Admins (RCA).
+- **Append-Only Harvest Ledger:** A secure, immutable ledger for recording crop deliveries. Deliveries can be initiated by Farmers and approved by Collection Officers.
+- **Bottom-Up Batch Aggregation:** Deliveries are aggregated into locked seasonal batches.
+- **Sales & Payout Distribution:** Bulk sales tracking and automated revenue split calculations based on individual farmer contributions.
+- **Agronomy & Anomaly Tracking:** Veterinarians can log disease outbreaks or anomalies, which are visualized on an interactive GIS map.
+- **USSD Gateway:** Offline access for farmers to check their balances and market prices via USSD (`*789#`), including a built-in web simulator.
+- **Notifications:** Automated system alerts and SMS receipts for deliveries and applications.
 
+## Tech Stack
+
+- **Backend:** Python, Django, Django REST Framework, PostgreSQL
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Leaflet (Maps), Lucide React (Icons)
+- **Authentication:** JWT (JSON Web Tokens)
+
+---
+
+## Local Development Setup
+
+Follow these steps to run the platform locally on your machine.
+
+### 1. Backend Setup
+
+Open a terminal and navigate to the backend directory:
 ```bash
-cd umucyo_ledger
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_demo_data      # creates demo cooperative, users, farmers, deliveries
-python manage.py createsuperuser     # optional, for /admin/
-python manage.py runserver
+cd backend
 ```
 
-Then open:
-- **http://127.0.0.1:8000/** — the cooperative dashboard (React, no build step)
-- **http://127.0.0.1:8000/ussd/simulator/** — a phone-shaped USSD simulator for farmers
-- **http://127.0.0.1:8000/admin/** — Django admin (raw data / superuser)
-- **http://127.0.0.1:8000/api/v1/** — the REST API (DRF browsable API)
-
-### Demo logins (password `Umucyo@2026`)
-| Username | Role |
-|---|---|
-| `admin1` | Cooperative Admin |
-| `manager1` | Cooperative Manager / Accountant |
-| `officer1` | Collection Officer |
-| `vet1` | Veterinarian / Extension Officer |
-| `rca1` | Super-Admin (RCA regulator, also Django superuser) |
-
-Demo farmer phone numbers for the USSD simulator: `0788000001`, `0788000002`, `0788000003`.
-
-## Switching to PostgreSQL 16 (matches the SRS target environment)
-
+Create a virtual environment and install dependencies:
 ```bash
-createdb umucyo_ledger   # or via psql: CREATE DATABASE umucyo_ledger;
-export USE_POSTGRES=1
-export DB_NAME=umucyo_ledger DB_USER=umucyo DB_PASSWORD=umucyo DB_HOST=localhost DB_PORT=5432
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Set up the database (using SQLite for local dev, or PostgreSQL if preferred):
+```bash
 python manage.py migrate
+```
+
+Seed the database with demo data (creates cooperatives, users, farmers, deliveries, etc.):
+```bash
 python manage.py seed_demo_data
 ```
 
-## What's built (maps to the SRS functional requirements)
-
-- **FR 1.x — Farmer USSD** (`ussd_gateway/`): session-based menu (deliveries /
-  balance / market price) speaking Africa's Talking's `sessionId` /
-  `phoneNumber` / `text` protocol at `/ussd/callback/`, plus a browser phone
-  simulator at `/ussd/simulator/` so it's demoable without a telco SIM.
-- **FR 2.x — Field weight capture** (`ledger/models.py: CropDelivery`):
-  bounds-validated (0.1–1500 kg), append-only at the model layer — `save()`
-  blocks edits to an existing row and `delete()` is disabled outright.
-- **FR 3.x — Instant notification**: an SMS receipt (`Notification` model) is
-  generated automatically the moment a delivery is logged.
-- **FR 4.x — Bottom-up, inalterable batch totals**: `BatchTotal.total_weight_kg`
-  is only ever set by a `SUM()` over its deliveries; `lock_batch()` freezes it
-  before a sale, and `flag_discrepancy()` checks it against an external
-  invoice figure.
-- **FR 5.x / 6.x — Bulk sales & revenue split**: recording a sale, verifying
-  the bank transfer, and `calculate_revenue_split()` computing each farmer's
-  proportional payout from `contribution_kg / batch_kg × sale_price`.
-- **FR 7.x — Agronomic/veterinary anomalies**: `AnomalyReport` with
-  sector/coordinates/severity, exposed to Admins, Vets and RCA.
-- **NFR 1 — Role separation**: enforced in `ledger/permissions.py` (e.g. a
-  Collection Officer cannot see the revenue dashboard; only Manager/Admin/
-  Super-Admin can record or split sales).
-- **NFR 7 — Atomic commits**: revenue-split and seed operations wrapped in
-  `transaction.atomic`.
-- All six user classes, the six-table class diagram, and the append-only
-  "Fraud Block" / "Bottom-Up Link" rules from Appendix B are implemented as
-  described.
-
-Automated smoke-tested during this build: login for every role, role-based
-403s, weight-bounds validation, the full lock → sell → verify → split flow,
-a USSD session end-to-end, and both the append-only and no-delete guarantees
-on `CropDelivery`.
-
-## What's next (not yet built)
-
-- FR 7.2's GIS heatmap is currently a plain table — needs an actual map
-  widget (e.g. Leaflet) plotting `AnomalyReport.latitude/longitude`.
-- No automated test suite (`pytest`/`django.test`) yet — only manual/scripted
-  smoke checks were run for this first pass.
-- `AdjustmentLog` model exists but has no API endpoint/UI yet — corrections
-  currently require the Django admin.
-- No SMS is actually sent (Notification rows simulate the receipt); wiring a
-  real Africa's Talking/SMPP account is a config step, not a code change.
-- No deployment config (Docker/Gunicorn/Nginx) yet.
-- Field Collection Officer flow currently goes through the same web
-  dashboard as managers; the SRS calls for a dedicated mobile-optimized
-  Collection Officer view.
-
-## Project layout
-
+Start the backend server:
+```bash
+python manage.py runserver
 ```
+The backend API is now running at `http://127.0.0.1:8000/`.
+
+### 2. Frontend Setup
+
+Open a new terminal window and navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+Install dependencies:
+```bash
+npm install
+```
+
+Start the Vite development server:
+```bash
+npm run dev
+```
+The frontend application will be available at `http://localhost:5173/`.
+
+---
+
+## Demo Credentials
+
+If you ran the `seed_demo_data` command, you can use the following credentials to explore the different role-based dashboards. 
+
+**Password for all demo accounts:** `Umucyo@2026`
+
+| Username   | Role                               |
+|------------|------------------------------------|
+| `admin1`   | Cooperative Admin                  |
+| `manager1` | Cooperative Manager / Accountant   |
+| `officer1` | Collection Officer                 |
+| `vet1`     | Veterinarian / Extension Officer   |
+| `rca1`     | Super-Admin (RCA regulator)        |
+
+*Note: You can also register a new Farmer account via the signup page.*
+
+---
+
+## Deployment to Render
+
+You can easily deploy Umucyo Ledger to [Render](https://render.com/) using Web Services and a Managed PostgreSQL Database.
+
+### 1. Database Setup
+1. In your Render Dashboard, click **New** -> **PostgreSQL**.
+2. Name it (e.g., `umucyo-db`) and create it.
+3. Once created, copy the **Internal Database URL**.
+
+### 2. Backend Deployment
+1. Click **New** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Name:** `umucyo-backend`
+   - **Root Directory:** `backend`
+   - **Environment:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+   - **Start Command:** `gunicorn config.wsgi:application`
+4. Add Environment Variables:
+   - `DATABASE_URL`: Paste the Internal Database URL from Step 1.
+   - `SECRET_KEY`: `<generate-a-secure-random-string>`
+   - `DEBUG`: `False`
+   - `ALLOWED_HOSTS`: `<your-render-backend-url>` (e.g., `umucyo-backend.onrender.com`)
+   - `CORS_ALLOWED_ORIGINS`: `<your-render-frontend-url>` (e.g., `https://umucyo-frontend.onrender.com`)
+5. Click **Create Web Service**.
+
+### 3. Frontend Deployment
+1. Click **New** -> **Static Site**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Name:** `umucyo-frontend`
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm install && npm run build`
+   - **Publish Directory:** `frontend/dist`
+4. Add Environment Variables:
+   - `VITE_API_URL`: `<your-render-backend-url>/api/v1` (e.g., `https://umucyo-backend.onrender.com/api/v1`)
+5. Click **Create Static Site**.
+6. **Important for React Router:** In the Render settings for your Static Site, go to the **Redirects/Rewrites** section and add a rule to support client-side routing:
+   - **Source:** `/*`
+   - **Destination:** `/index.html`
+   - **Action:** `Rewrite`
+
+---
+
+## Project Structure
+
+```text
 umucyo_ledger/
-  config/            # Django project settings/urls
-  ledger/            # core domain: models, API, admin, permissions, seed command
-  ussd_gateway/       # USSD callback + browser simulator
-  templates/dashboard/index.html   # React (CDN, no-build) staff dashboard
-  templates/ussd_gateway/simulator.html  # phone-styled USSD simulator
+├── backend/                  # Django API
+│   ├── apps/                 # Modular domain applications
+│   │   ├── accounts/         # RBAC, Authentication, Profiles
+│   │   ├── agronomy_monitoring/ # Anomalies, GIS Data
+│   │   ├── cooperatives/     # Co-ops, Staff, Farmers
+│   │   ├── harvest_ledger/   # Immutable crop deliveries, Batches
+│   │   ├── notifications/    # SMS Receipts, System Alerts
+│   │   ├── sales_distribution/# Bulk Sales, Payouts
+│   │   └── ussd_gateway/     # USSD simulator & webhook
+│   ├── common/               # Shared utilities, Base Models, Permissions
+│   ├── config/               # Django settings and root URLs
+│   └── manage.py
+├── frontend/                 # React Dashboard
+│   ├── src/
+│   │   ├── api/              # Axios API service integrations
+│   │   ├── components/       # Reusable UI components & layouts
+│   │   ├── config/           # Routes and environment constants
+│   │   ├── features/         # Feature-based modular UI (Harvest, Sales, etc.)
+│   │   ├── hooks/            # Custom React hooks (useAuth, useRole)
+│   │   ├── store/            # Zustand global state management
+│   │   └── types/            # TypeScript interfaces
+│   ├── tailwind.config.js
+│   └── package.json
+└── README.md
 ```
