@@ -8,6 +8,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from decouple import config, Csv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -32,9 +33,15 @@ load_env_file()
 
 SECRET_KEY = config("DJANGO_SECRET_KEY")
 
-DEBUG = config("DJANGO_DEBUG", cast=bool)
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=Csv())
+
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="http://localhost:8000,http://127.0.0.1:8000",
+    cast=Csv()
+)
 
 # Application definition - Multi-App Domain Architecture
 INSTALLED_APPS = [
@@ -64,6 +71,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -96,16 +104,27 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database Configuration (Exclusive PostgreSQL 16 - SRS Section 2.4)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME"),
-        "USER": config("DB_USER"),
-        "PASSWORD": config("DB_PASSWORD"),
-        "HOST": config("DB_HOST"),
-        "PORT": config("DB_PORT"),
+DATABASE_URL = config("DATABASE_URL", default=None)
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=config("DB_CONN_MAX_AGE", default=600, cast=int),
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
+            "NAME": config("DB_NAME", default="umucyo_ledger"),
+            "USER": config("DB_USER", default="seric"),
+            "PASSWORD": config("DB_PASSWORD", default="seric123"),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+            "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=600, cast=int),
+        }
+    }
 
 # Custom User Model (Accounts Domain - NFR 1 Role-Based Access Separation)
 AUTH_USER_MODEL = "accounts.User"
@@ -127,13 +146,25 @@ TIME_ZONE = "Africa/Kigali"
 USE_I18N = True
 USE_TZ = True
 
-# Static files (Required for Django admin cleanly)
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+# Static files (Environment variable driven, served via WhiteNoise in production)
+STATIC_URL = config("STATIC_URL", default="/static/")
+_raw_static_root = config("STATIC_ROOT", default="staticfiles")
+STATIC_ROOT = BASE_DIR / _raw_static_root if not Path(_raw_static_root).is_absolute() else Path(_raw_static_root)
 
-# Media files (File uploads for registrations etc.)
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Media files (File uploads for registrations, attachments, etc.)
+MEDIA_URL = config("MEDIA_URL", default="/media/")
+_raw_media_root = config("MEDIA_ROOT", default="media")
+MEDIA_ROOT = BASE_DIR / _raw_media_root if not Path(_raw_media_root).is_absolute() else Path(_raw_media_root)
+
+# Storage configuration for Django static & media storage
+STORAGES = {
+    "default": {
+        "BACKEND": config("DEFAULT_FILE_STORAGE", default="django.core.files.storage.FileSystemStorage"),
+    },
+    "staticfiles": {
+        "BACKEND": config("STATICFILES_STORAGE", default="whitenoise.storage.CompressedManifestStaticFilesStorage"),
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -157,7 +188,8 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=DEBUG, cast=bool)
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000,http://127.0.0.1:3000", cast=Csv())
 
 # Professional Logging Configuration
 LOGGING = {
