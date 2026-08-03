@@ -1,8 +1,10 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { TokenResponse } from '@/types/api';
 
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://umucyo-ledger.onrender.com/api/v1').replace(/\/+$/, '');
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,7 +44,7 @@ apiClient.interceptors.response.use(
 
         refreshPromise = axios
           .post<TokenResponse>(
-            `${import.meta.env.VITE_API_URL}/auth/refresh/`,
+            `${API_BASE_URL}/auth/refresh/`,
             { refresh: refreshToken }
           )
           .then((res) => {

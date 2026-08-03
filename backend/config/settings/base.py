@@ -103,28 +103,36 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# Database Configuration (Exclusive PostgreSQL 16 - SRS Section 2.4)
+# Database Configuration (Exclusive PostgreSQL 16 - SRS Section 2.4 / Render PostgreSQL)
 DATABASE_URL = config("DATABASE_URL", default=None)
+db_ssl_require = config(
+    "DB_SSL_REQUIRE",
+    default=bool(DATABASE_URL and ("render.com" in DATABASE_URL or "sslmode=require" in DATABASE_URL)),
+    cast=bool
+)
+
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=config("DB_CONN_MAX_AGE", default=600, cast=int),
             conn_health_checks=True,
+            ssl_require=db_ssl_require,
         )
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
-            "NAME": config("DB_NAME", default="umucyo_ledger"),
-            "USER": config("DB_USER", default="seric"),
-            "PASSWORD": config("DB_PASSWORD", default="seric123"),
-            "HOST": config("DB_HOST", default="localhost"),
-            "PORT": config("DB_PORT", default="5432"),
-            "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=600, cast=int),
-        }
+    db_config = {
+        "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
+        "NAME": config("DB_NAME", default="umucyo_ledger"),
+        "USER": config("DB_USER", default="seric"),
+        "PASSWORD": config("DB_PASSWORD", default="seric123"),
+        "HOST": config("DB_HOST", default="localhost"),
+        "PORT": config("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=600, cast=int),
     }
+    if db_ssl_require:
+        db_config["OPTIONS"] = {"sslmode": "require"}
+    DATABASES = {"default": db_config}
 
 # Custom User Model (Accounts Domain - NFR 1 Role-Based Access Separation)
 AUTH_USER_MODEL = "accounts.User"
