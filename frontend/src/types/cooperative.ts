@@ -4,6 +4,13 @@ export interface Cooperative {
   rca_registration_no: string;
   sector: string;
   district: string;
+  crop?: string;
+  admin_first_name?: string;
+  admin_last_name?: string;
+  admin_phone?: string;
+  certificate?: string;
+  tin_certificate?: string;
+  status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +40,7 @@ export interface Farmer {
   phone_number: string;
   district: string;
   total_season_kg: number;
+  status?: string;
   created_at: string;
   updated_at: string;
 }

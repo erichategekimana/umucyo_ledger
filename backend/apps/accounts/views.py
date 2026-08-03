@@ -31,46 +31,172 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     Allows management of platform users.
     Restricted to Cooperative Admins and Super-Admins (NFR 1).
+    Cooperative Admins are scoped strictly to users assigned to their cooperative,
+    and cannot modify Admin or Super-Admin users.
     """
     serializer_class = UserSerializer
     permission_classes = [IsCooperativeAdmin]
 
     def get_queryset(self):
         user = self.request.user
+        if not user or not user.is_authenticated:
+            return User.objects.none()
+
         if user.is_superuser or user.role == "SUPER_ADMIN":
             return User.objects.all().order_by("-created_at")
-        # Cooperative admins only see users linked to their cooperative
-        return User.objects.filter(role__in=["COLLECTION_OFFICER", "MANAGER", "VETERINARIAN", "FARMER"]).order_by("-created_at")
+
+        if user.role == "ADMIN":
+            # Cooperative Admin: scoped strictly to users assigned to their cooperative
+            admin_coop_id = None
+            if hasattr(user, "staff_profile") and user.staff_profile and user.staff_profile.cooperative_id:
+                admin_coop_id = user.staff_profile.cooperative_id
+            elif hasattr(user, "farmer_profile") and user.farmer_profile and user.farmer_profile.cooperative_id:
+                admin_coop_id = user.farmer_profile.cooperative_id
+
+            if not admin_coop_id:
+                return User.objects.none()
+
+            from django.db.models import Q
+            return User.objects.filter(
+                Q(staff_profile__cooperative_id=admin_coop_id) | Q(farmer_profile__cooperative_id=admin_coop_id)
+            ).distinct().order_by("-created_at")
+
+        return User.objects.none()
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
         """Returns the authenticated user's profile and permissions."""
         return Response(UserSerializer(request.user).data)
 
-    @action(detail=True, methods=["post"])
+    def _is_restricted_target(self, target_user):
+        """Returns True if target_user is a Super-Admin or Admin user."""
+        return bool(
+            target_user.is_superuser or target_user.role in ["SUPER_ADMIN", "ADMIN"]
+        )
+
+    def update(self, request, *args, **kwargs):
+        current_user = request.user
+        target_user = self.get_object()
+        
+        if not current_user.is_superuser and current_user.role != "SUPER_ADMIN":
+            if self._is_restricted_target(target_user):
+                return Response(
+                    {"detail": "Cooperative Admins cannot modify Admin or Super-Admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            new_role = request.data.get("role")
+            if new_role in ["ADMIN", "SUPER_ADMIN"] or request.data.get("is_superuser"):
+                return Response(
+                    {"detail": "Only Super-Admins can assign Admin or Super-Admin roles."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        current_user = request.user
+        target_user = self.get_object()
+        
+        if not current_user.is_superuser and current_user.role != "SUPER_ADMIN":
+            if self._is_restricted_target(target_user):
+                return Response(
+                    {"detail": "Cooperative Admins cannot modify Admin or Super-Admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            new_role = request.data.get("role")
+            if new_role in ["ADMIN", "SUPER_ADMIN"] or request.data.get("is_superuser"):
+                return Response(
+                    {"detail": "Only Super-Admins can assign Admin or Super-Admin roles."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        current_user = request.user
+        target_user = self.get_object()
+        
+        if not current_user.is_superuser and current_user.role != "SUPER_ADMIN":
+            if self._is_restricted_target(target_user):
+                return Response(
+                    {"detail": "Cooperative Admins cannot modify Admin or Super-Admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post", "patch"])
+    def change_status(self, request, pk=None):
+        """
+        Action to activate/deactivate or approve/decline user status.
+        Cooperative Admins can only change status for non-admin/super-admin users in their cooperative.
+        """
+        target_user = self.get_object()
+        current_user = request.user
+
+        if not current_user.is_superuser and current_user.role != "SUPER_ADMIN":
+            if self._is_restricted_target(target_user):
+                return Response(
+                    {"detail": "Cooperative Admins cannot modify Admin or Super-Admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        if "is_active" in request.data:
+            new_is_active = bool(request.data.get("is_active"))
+        elif "status" in request.data:
+            st = str(request.data.get("status")).upper()
+            new_is_active = st in ["ACTIVE", "APPROVED", "TRUE", "1"]
+        else:
+            new_is_active = not target_user.is_active
+
+        target_user.is_active = new_is_active
+        target_user.save()
+
+        # Synchronize linked profiles
+        if hasattr(target_user, "staff_profile") and target_user.staff_profile:
+            target_user.staff_profile.is_active = new_is_active
+            target_user.staff_profile.save()
+
+        if hasattr(target_user, "farmer_profile") and target_user.farmer_profile:
+            target_user.farmer_profile.approved = new_is_active
+            target_user.farmer_profile.status = "APPROVED" if new_is_active else "DECLINED"
+            target_user.farmer_profile.save()
+
+        return Response({
+            "detail": f"User status updated to {'active' if new_is_active else 'inactive'}.",
+            "user": UserSerializer(target_user).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post", "patch"])
+    def toggle_status(self, request, pk=None):
+        """Alias for change_status action."""
+        return self.change_status(request, pk)
+
+    @action(detail=True, methods=["post", "patch"])
     def change_role(self, request, pk=None):
         target_user = self.get_object()
+        current_user = request.user
         new_role = request.data.get("role")
         
         from .models import Role
         if not new_role or new_role not in dict(Role.choices):
             return Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
-            
-        current_user = request.user
-        
-        if current_user.role == "SUPER_ADMIN":
-            target_user.role = new_role
-            target_user.save()
-            return Response({"detail": f"Role updated to {new_role}."})
-            
-        if current_user.role == "ADMIN":
-            if new_role in ["ADMIN", "SUPER_ADMIN", "VETERINARIAN"]:
-                return Response({"detail": "Cannot set to restricted roles."}, status=status.HTTP_403_FORBIDDEN)
-            target_user.role = new_role
-            target_user.save()
-            return Response({"detail": f"Role updated to {new_role}."})
-            
-        return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not current_user.is_superuser and current_user.role != "SUPER_ADMIN":
+            if self._is_restricted_target(target_user):
+                return Response(
+                    {"detail": "Cooperative Admins cannot modify Admin or Super-Admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            if new_role in ["ADMIN", "SUPER_ADMIN"]:
+                return Response(
+                    {"detail": "Only Super-Admins can assign Admin or Super-Admin roles."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        target_user.role = new_role
+        target_user.save()
+        return Response({"detail": f"Role updated to {new_role}.", "user": UserSerializer(target_user).data})
 
 
 class VeterinarianApplicationViewSet(viewsets.ModelViewSet):

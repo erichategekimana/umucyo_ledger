@@ -17,8 +17,11 @@ export class CooperativeService extends BaseService {
     return this.get<Cooperative>(ENDPOINTS.COOPERATIVES.DETAIL(id));
   }
 
-  async createCooperative(formData: FormData): Promise<Cooperative> {
-    return this.postFormData<Cooperative>(ENDPOINTS.COOPERATIVES.LIST, formData);
+  async createCooperative(data: FormData | Partial<Cooperative>): Promise<Cooperative> {
+    if (data instanceof FormData) {
+      return this.postFormData<Cooperative>(ENDPOINTS.COOPERATIVES.LIST, data);
+    }
+    return this.post<Cooperative>(ENDPOINTS.COOPERATIVES.LIST, data);
   }
 
   async approveCooperative(id: string): Promise<any> {
