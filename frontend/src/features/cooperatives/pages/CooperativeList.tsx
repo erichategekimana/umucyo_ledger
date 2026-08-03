@@ -13,7 +13,7 @@ export const CooperativeList = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const canManage = user?.role === 'SUPER_ADMIN';
 
   const fetchData = async (pageNum = 1) => {
     setLoading(true);

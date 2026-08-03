@@ -32,7 +32,6 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
   ],
   ADMIN: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { to: ROUTES.COOPERATIVES, label: 'Cooperatives', icon: <Building2 size={18} /> },
     { to: ROUTES.STAFF, label: 'Staff', icon: <UserCheck size={18} /> },
     { to: ROUTES.FARMERS, label: 'Farmers', icon: <Users size={18} /> },
     { to: ROUTES.BATCHES, label: 'Batches', icon: <Layers size={18} /> },
