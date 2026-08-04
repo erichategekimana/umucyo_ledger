@@ -20,6 +20,7 @@ export const ROUTES = {
   DELIVERY_NEW: '/harvest/deliveries/new',
   ADJUSTMENTS: '/harvest/adjustments',
   DISCREPANCIES: '/harvest/discrepancies',
+  CROP_PRICES: '/crop-prices',
 
   SALES: '/sales',
   SALES_NEW: '/sales/new',

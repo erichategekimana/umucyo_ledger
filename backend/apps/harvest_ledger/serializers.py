@@ -2,7 +2,21 @@
 Harvest Ledger Domain Serializers.
 """
 from rest_framework import serializers
-from .models import BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag
+from .models import BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, CropPrice
+
+
+class CropPriceSerializer(serializers.ModelSerializer):
+    """Serializes national standard crop price records."""
+
+    updated_by_username = serializers.CharField(source="updated_by.username", read_only=True)
+
+    class Meta:
+        model = CropPrice
+        fields = [
+            "id", "name", "price_per_kg", "updated_by", "updated_by_username",
+            "created_at", "updated_at"
+        ]
+        read_only_fields = ["id", "updated_by", "created_at", "updated_at"]
 
 
 class BatchTotalSerializer(serializers.ModelSerializer):
@@ -25,15 +39,17 @@ class CropDeliverySerializer(serializers.ModelSerializer):
     farmer_name = serializers.CharField(source="farmer.full_name", read_only=True)
     officer_username = serializers.CharField(source="officer.username", read_only=True)
     cooperative_name = serializers.CharField(source="cooperative.name", read_only=True)
+    price_per_kg = serializers.FloatField(read_only=True)
+    estimated_payout_rwf = serializers.FloatField(read_only=True)
 
     class Meta:
         model = CropDelivery
         fields = [
             "id", "cooperative", "cooperative_name", "farmer", "farmer_name",
             "officer", "officer_username", "batch", "crop_type", "weight_kg",
-            "status", "dropoff_time", "created_at"
+            "price_per_kg", "estimated_payout_rwf", "status", "dropoff_time", "created_at"
         ]
-        read_only_fields = ["id", "status", "dropoff_time", "created_at"]
+        read_only_fields = ["id", "price_per_kg", "estimated_payout_rwf", "status", "dropoff_time", "created_at"]
 
 
 class AdjustmentLogSerializer(serializers.ModelSerializer):

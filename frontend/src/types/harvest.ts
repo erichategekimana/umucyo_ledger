@@ -11,6 +11,16 @@ export interface BatchTotal {
   updated_at: string;
 }
 
+export interface CropPrice {
+  id: string;
+  name: string;
+  price_per_kg: number;
+  updated_by?: string;
+  updated_by_username?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CropDelivery {
   id: string;
   cooperative: string;
@@ -22,6 +32,8 @@ export interface CropDelivery {
   batch: string;
   crop_type: string;
   weight_kg: number;
+  price_per_kg?: number;
+  estimated_payout_rwf?: number;
   status: string;
   dropoff_time: string;
   created_at: string;

@@ -188,18 +188,31 @@ class Farmer(TimeStampedUUIDModel):
         """
         Implements FR 1.2 (Historical Delivery Query):
         Returns the last 3 crop delivery weights recorded under the farmer's ID alongside
-        their running total season balance for display via USSD menu Option 1 & Option 2.
+        their running total season balance and estimated earnings in RWF.
         """
-        last_three = self.deliveries.order_by("-dropoff_time")[:3]
+        from apps.harvest_ledger.models import CropPrice
+        price_map = {cp.name.lower(): float(cp.price_per_kg) for cp in CropPrice.objects.all()}
+
+        approved_deliveries = self.deliveries.filter(status="APPROVED")
+        total_kg = sum(float(d.effective_weight_kg) for d in approved_deliveries)
+        total_earnings = sum(
+            float(d.effective_weight_kg) * price_map.get(d.crop_type.lower(), 0.0)
+            for d in approved_deliveries
+        )
+
+        last_three = approved_deliveries.order_by("-dropoff_time")[:3]
         return {
             "farmer": self.full_name,
             "national_id": self.national_id,
             "cooperative": self.cooperative.name,
-            "total_season_kg": float(self.total_season_kg),
+            "total_season_kg": round(total_kg, 2),
+            "total_earnings_rwf": round(total_earnings, 2),
             "last_deliveries": [
                 {
                     "crop_type": d.crop_type,
                     "weight_kg": float(d.weight_kg),
+                    "price_per_kg": price_map.get(d.crop_type.lower(), 0.0),
+                    "estimated_payout_rwf": round(float(d.effective_weight_kg) * price_map.get(d.crop_type.lower(), 0.0), 2),
                     "dropoff_time": d.dropoff_time.isoformat(),
                 }
                 for d in last_three

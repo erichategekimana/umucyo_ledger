@@ -70,7 +70,23 @@ export const DeliveryList = () => {
     {
       header: 'Weight',
       accessor: (row: CropDelivery) => (
-        <span className="font-semibold text-emerald-700">{Number(row.weight_kg || 0).toFixed(2)} kg</span>
+        <span className="font-semibold text-slate-800">{Number(row.weight_kg || 0).toFixed(2)} kg</span>
+      ),
+    },
+    {
+      header: 'Rate (1kg)',
+      accessor: (row: CropDelivery) => (
+        <span className="text-slate-600 text-xs font-medium">
+          {row.price_per_kg ? `${Number(row.price_per_kg).toLocaleString()} RWF` : '—'}
+        </span>
+      ),
+    },
+    {
+      header: 'Est. Value',
+      accessor: (row: CropDelivery) => (
+        <span className="font-bold text-emerald-700">
+          {row.estimated_payout_rwf ? `${Number(row.estimated_payout_rwf).toLocaleString()} RWF` : '—'}
+        </span>
       ),
     },
     {

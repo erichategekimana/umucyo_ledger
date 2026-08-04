@@ -7,13 +7,14 @@ import { CropDelivery, Farmer } from '@/types';
 import { StatCard } from '@/components/common/StatCard';
 import { ActivityFeed } from '@/components/common/ActivityFeed';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { Truck, Leaf, Bell, ChevronRight, Scale } from 'lucide-react';
+import { Truck, Leaf, Bell, ChevronRight, Scale, DollarSign } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
 export const FarmerDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [totalKg, setTotalKg] = useState(0);
+  const [totalEarningsRwf, setTotalEarningsRwf] = useState(0);
   const [deliveries, setDeliveries] = useState<CropDelivery[]>([]);
   const [balanceData, setBalanceData] = useState<any>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -31,6 +32,14 @@ export const FarmerDashboard = () => {
           page_size: 5,
         });
         setDeliveries(deliveriesResp.results);
+
+        if (farmer) {
+          const b = await cooperativeService.getFarmerBalance(farmer.id);
+          setBalanceData(b);
+          if (b && b.total_earnings_rwf !== undefined) {
+            setTotalEarningsRwf(b.total_earnings_rwf);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch farmer data', error);
       } finally {
@@ -69,13 +78,20 @@ export const FarmerDashboard = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Total Season Weight"
           value={totalKg > 0 ? `${Number(totalKg || 0).toFixed(1)} kg` : '0 kg'}
           subtitle="Cumulative delivered this season"
           icon={<Scale size={22} />}
           color="emerald"
+        />
+        <StatCard
+          title="Estimated Season Earnings"
+          value={`${Number(totalEarningsRwf || 0).toLocaleString()} RWF`}
+          subtitle="Based on national crop price per 1kg"
+          icon={<DollarSign size={22} />}
+          color="amber"
         />
         <StatCard
           title="Number of Deliveries"

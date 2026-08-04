@@ -15,6 +15,42 @@ from common.models import TimeStampedUUIDModel
 from apps.cooperatives.models import Cooperative, Farmer
 
 
+class CropPrice(TimeStampedUUIDModel):
+    """
+    National standard crop price per 1kg established exclusively by Super Admin (RCA Regulator).
+    Reflects across the entire application and determines individual farmer delivery earnings and payout values.
+    """
+
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Official crop category name (e.g. Coffee, Tea, Beans, Maize, Sweet Potatoes, Irish Potatoes, Rice, Sorghum, Wheat, Soybeans)."
+    )
+    price_per_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        help_text="National market price per 1 kg in Rwandan Francs (RWF)."
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_crop_prices",
+        help_text="Super Admin user who last updated this crop price."
+    )
+
+    class Meta:
+        verbose_name = "Crop Price"
+        verbose_name_plural = "Crop Prices"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} - {self.price_per_kg} RWF/kg"
+
+
 class BatchTotal(TimeStampedUUIDModel):
     """
     The Bottom-Up Link (SRS Appendix B):
@@ -202,6 +238,17 @@ class CropDelivery(TimeStampedUUIDModel):
         if adjustments:
             return max(adjustments, key=lambda a: a.created_at).corrected_weight_kg
         return self.weight_kg
+
+    @property
+    def price_per_kg(self):
+        """Fetches the national standard price per 1kg for this crop type."""
+        cp = CropPrice.objects.filter(name__iexact=self.crop_type).first()
+        return float(cp.price_per_kg) if cp else 0.0
+
+    @property
+    def estimated_payout_rwf(self):
+        """Calculates total value in RWF based on delivery weight and national price per 1kg."""
+        return round(float(self.effective_weight_kg) * self.price_per_kg, 2)
 
     def clean(self):
         """

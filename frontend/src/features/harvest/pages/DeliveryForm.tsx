@@ -4,7 +4,13 @@ import { harvestService } from '@/api/harvest.service';
 import { cooperativeService } from '@/api/cooperative.service';
 import { ROUTES } from '@/config/routes';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Send, AlertCircle } from 'lucide-react';
+import { CropPrice } from '@/types';
+import { ArrowLeft, Send, AlertCircle, Calculator } from 'lucide-react';
+
+const DEFAULT_CROPS = [
+  'Coffee', 'Tea', 'Beans', 'Maize', 'Sweet Potatoes',
+  'Irish Potatoes', 'Rice', 'Sorghum', 'Wheat', 'Soybeans'
+];
 
 export const DeliveryForm = () => {
   const navigate = useNavigate();
@@ -13,6 +19,7 @@ export const DeliveryForm = () => {
   const [error, setError] = useState('');
   const [farmers, setFarmers] = useState<{ id: string; full_name: string }[]>([]);
   const [cooperatives, setCooperatives] = useState<{ id: string; name: string }[]>([]);
+  const [cropPrices, setCropPrices] = useState<CropPrice[]>([]);
 
   const [formData, setFormData] = useState({
     farmer: '',
@@ -24,6 +31,9 @@ export const DeliveryForm = () => {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
+        const pricesData = await harvestService.listCropPrices();
+        setCropPrices(pricesData);
+
         if (user?.role === 'FARMER') {
           const farmersResp = await cooperativeService.listFarmers({ user: user.id, page_size: 1 });
           if (farmersResp.results.length > 0) {
@@ -49,6 +59,13 @@ export const DeliveryForm = () => {
     fetchOptions();
   }, [user]);
 
+  const selectedCropPrice = cropPrices.find(
+    (cp) => cp.name.toLowerCase() === formData.crop_type.toLowerCase()
+  )?.price_per_kg ?? 0;
+
+  const weightNum = parseFloat(formData.weight_kg) || 0;
+  const estimatedPayout = (weightNum * selectedCropPrice).toFixed(2);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -72,6 +89,10 @@ export const DeliveryForm = () => {
       setLoading(false);
     }
   };
+
+  const availableCropNames = cropPrices.length > 0
+    ? cropPrices.map(c => ({ name: c.name, price: c.price_per_kg }))
+    : DEFAULT_CROPS.map(c => ({ name: c, price: 0 }));
 
   return (
     <div className="max-w-xl mx-auto animate-fade-in">
@@ -140,8 +161,10 @@ export const DeliveryForm = () => {
               className="form-select"
             >
               <option value="">Select crop type...</option>
-              {['Coffee', 'Tea', 'Pyrethrum', 'Maize', 'Beans', 'Sorghum', 'Other'].map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {availableCropNames.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name} {item.price > 0 ? `(${Number(item.price).toLocaleString()} RWF/kg)` : ''}
+                </option>
               ))}
             </select>
           </div>
@@ -160,6 +183,30 @@ export const DeliveryForm = () => {
               className="form-input"
             />
           </div>
+
+          {/* Live Payout Estimation Panel */}
+          {formData.crop_type && weightNum > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Calculator size={20} />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">
+                    Estimated Farmer Payout
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {weightNum} kg × {Number(selectedCropPrice).toLocaleString()} RWF/kg
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-extrabold text-emerald-800 block">
+                  {Number(estimatedPayout).toLocaleString()} RWF
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

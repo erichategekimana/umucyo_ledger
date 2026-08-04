@@ -119,20 +119,17 @@ def ussd_callback(request):
 
     # Option 3: Market Prices
     elif root_choice == "3":
-        if preferred_lang == "en":
-            msg = (
-                "END Current Indicative Market Prices:\n"
-                "- Soya: 850 RWF/kg\n"
-                "- Coffee (Cherry): 410 RWF/kg\n"
-                "- Maize: 320 RWF/kg"
-            )
+        from apps.harvest_ledger.models import CropPrice
+        prices = CropPrice.objects.all().order_by("name")
+        if prices.exists():
+            lines = [f"- {cp.name}: {float(cp.price_per_kg):.0f} RWF/kg" for cp in prices[:6]]
         else:
-            msg = (
-                "END Ibiciro by'ibihingwa ku isoko:\n"
-                "- Soya: 850 RWF/kg\n"
-                "- Ikawa: 410 RWF/kg\n"
-                "- Ibishyimbo/kigori: 320 RWF/kg"
-            )
+            lines = ["- Coffee: 600 RWF/kg", "- Beans: 650 RWF/kg", "- Maize: 450 RWF/kg"]
+
+        if preferred_lang == "en":
+            msg = "END Indicative Market Prices per 1kg:\n" + "\n".join(lines)
+        else:
+            msg = "END Ibiciro by'ibihingwa ku isoko (1kg):\n" + "\n".join(lines)
         return _format_ussd_response(msg, start_time)
 
     # Option 4: Language Switch
