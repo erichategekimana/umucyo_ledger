@@ -10,6 +10,7 @@ import { Outlet } from 'react-router-dom';
 // Dashboard pages
 import { ApprovalsPage } from '@/features/dashboard/pages/ApprovalsPage';
 import { RoleManagementPage } from '@/features/dashboard/pages/RoleManagementPage';
+import { CropPricesPage } from '@/features/dashboard/pages/CropPricesPage';
 
 // Cooperative pages
 import { CooperativeList } from '@/features/cooperatives/pages/CooperativeList';
@@ -61,6 +62,9 @@ function App() {
 
           {/* Notifications — all roles */}
           <Route path={ROUTES.NOTIFICATIONS} element={<NotificationList />} />
+
+          {/* National Crop Prices — all authenticated roles */}
+          <Route path={ROUTES.CROP_PRICES} element={<CropPricesPage />} />
 
           {/* Deliveries — Officers, Farmers, Managers, Admins, SuperAdmin */}
           <Route

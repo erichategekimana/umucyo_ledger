@@ -1,8 +1,27 @@
 import { BaseService } from './base.service';
-import { BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, PaginatedResponse } from '@/types';
+import { BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, CropPrice, PaginatedResponse } from '@/types';
 
 export class HarvestService extends BaseService {
   protected basePath = '';
+
+  // Crop Prices
+  async listCropPrices(): Promise<CropPrice[]> {
+    const resp = await this.get<PaginatedResponse<CropPrice> | CropPrice[]>('/crop-prices/');
+    if (Array.isArray(resp)) return resp;
+    return resp.results || [];
+  }
+
+  async updateCropPrice(id: string, pricePerKg: number): Promise<CropPrice> {
+    return this.patch<CropPrice>(`/crop-prices/${id}/`, { price_per_kg: pricePerKg });
+  }
+
+  async createCropPrice(name: string, pricePerKg: number): Promise<CropPrice> {
+    return this.post<CropPrice>('/crop-prices/', { name, price_per_kg: pricePerKg });
+  }
+
+  async bulkUpdateCropPrices(prices: { id?: string; name?: string; price_per_kg: number }[]): Promise<CropPrice[]> {
+    return this.post<CropPrice[]>('/crop-prices/bulk_update/', { prices });
+  }
 
   // Batches - use paginated
   async listBatches(params?: any): Promise<PaginatedResponse<BatchTotal>> {

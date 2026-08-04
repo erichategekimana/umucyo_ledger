@@ -5,7 +5,7 @@ import { Role } from '@/types';
 import {
   LayoutDashboard, Building2, Users, UserCheck, Layers, Truck, ShoppingCart,
   DollarSign, FileBarChart, AlertTriangle, Map, Bell, Radio, ScrollText,
-  ChevronLeft, ChevronRight, Stethoscope, Plus, Settings
+  ChevronLeft, ChevronRight, Stethoscope, Plus, Settings, Tags
 } from 'lucide-react';
 
 interface MenuItem {
@@ -19,6 +19,7 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
   SUPER_ADMIN: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: ROUTES.COOPERATIVES, label: 'Cooperatives', icon: <Building2 size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Crop Prices', icon: <Tags size={18} /> },
     { to: ROUTES.STAFF, label: 'Staff', icon: <UserCheck size={18} /> },
     { to: ROUTES.FARMERS, label: 'Farmers', icon: <Users size={18} /> },
     { to: ROUTES.BATCHES, label: 'Batches', icon: <Layers size={18} /> },
@@ -32,6 +33,7 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
   ],
   ADMIN: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Crop Prices', icon: <Tags size={18} /> },
     { to: ROUTES.STAFF, label: 'Staff', icon: <UserCheck size={18} /> },
     { to: ROUTES.FARMERS, label: 'Farmers', icon: <Users size={18} /> },
     { to: ROUTES.BATCHES, label: 'Batches', icon: <Layers size={18} /> },
@@ -44,6 +46,7 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
   ],
   MANAGER: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Crop Prices', icon: <Tags size={18} /> },
     { to: ROUTES.BATCHES, label: 'Batches', icon: <Layers size={18} /> },
     { to: ROUTES.DELIVERIES, label: 'Deliveries', icon: <Truck size={18} /> },
     { to: ROUTES.SALES, label: 'Sales', icon: <ShoppingCart size={18} /> },

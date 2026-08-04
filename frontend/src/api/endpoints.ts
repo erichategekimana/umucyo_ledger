@@ -29,4 +29,9 @@ export const ENDPOINTS = {
     APPROVE: (id: string) => `/veterinarian-applications/${id}/approve/`,
     DECLINE: (id: string) => `/veterinarian-applications/${id}/decline/`,
   },
+  CROP_PRICES: {
+    LIST: '/crop-prices/',
+    DETAIL: (id: string) => `/crop-prices/${id}/`,
+    BULK_UPDATE: '/crop-prices/bulk_update/',
+  },
 };

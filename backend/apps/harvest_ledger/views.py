@@ -8,8 +8,62 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from common.permissions import IsCollectionOfficer, IsCooperativeManager, IsSuperAdminOrRCA, IsCooperativeAdmin, scoped_queryset
-from .models import BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag
-from .serializers import BatchTotalSerializer, CropDeliverySerializer, AdjustmentLogSerializer, DiscrepancyFlagSerializer
+from .models import BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, CropPrice
+from .serializers import BatchTotalSerializer, CropDeliverySerializer, AdjustmentLogSerializer, DiscrepancyFlagSerializer, CropPriceSerializer
+
+
+class CropPriceViewSet(viewsets.ModelViewSet):
+    """
+    Manages national standard crop prices per 1kg.
+    Read access is available to all authenticated users.
+    Create/Update/Delete operations are restricted exclusively to Super Admin (RCA).
+    """
+    queryset = CropPrice.objects.all().order_by("name")
+    serializer_class = CropPriceSerializer
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [IsAuthenticated()]
+        return [IsSuperAdminOrRCA()]
+
+    def perform_create(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsSuperAdminOrRCA])
+    def bulk_update(self, request):
+        """
+        Allows Super Admin to bulk update multiple crop prices per 1kg.
+        Payload: {"prices": [{"id": "...", "price_per_kg": 650.0}, ...]}
+        """
+        prices = request.data.get("prices", [])
+        if not isinstance(prices, list):
+            return Response({"detail": "Expected 'prices' array in payload."}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated_items = []
+        for item in prices:
+            crop_id = item.get("id")
+            crop_name = item.get("name")
+            new_price = item.get("price_per_kg")
+
+            if new_price is None:
+                continue
+
+            crop = None
+            if crop_id:
+                crop = CropPrice.objects.filter(id=crop_id).first()
+            elif crop_name:
+                crop = CropPrice.objects.filter(name__iexact=crop_name).first()
+
+            if crop:
+                crop.price_per_kg = new_price
+                crop.updated_by = request.user
+                crop.save()
+                updated_items.append(crop)
+
+        return Response(CropPriceSerializer(updated_items, many=True).data)
 
 
 class BatchTotalViewSet(viewsets.ModelViewSet):
