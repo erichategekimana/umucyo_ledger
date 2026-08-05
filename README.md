@@ -2,6 +2,18 @@
 
 Umucyo Ledger is a comprehensive, role-based platform designed to manage cooperative agricultural operations. It bridges the gap between smallholder farmers, cooperative staff, veterinarians, and regulators (RCA). The platform provides a robust Django/PostgreSQL backend REST API, a modern React (Vite/Tailwind) web dashboard, and a USSD gateway simulator for offline farmer access.
 
+---
+
+## 🌐 Live Production Deployment Links
+
+The platform is live and deployed on **Render** (PostgreSQL Database, Web Service Backend, and Static Site Frontend):
+
+- 🚀 **Live Web Application (Frontend):** [https://umucyo-ledger-frontend.onrender.com](https://umucyo-ledger-frontend.onrender.com)
+- ⚙️ **Live REST API & Django Admin (Backend):** [https://umucyo-ledger.onrender.com](https://umucyo-ledger.onrender.com)
+- 🛠️ **Django Admin Portal:** [https://umucyo-ledger.onrender.com/admin/](https://umucyo-ledger.onrender.com/admin/)
+
+---
+
 ## Key Features
 
 - **Role-Based Access Control (RBAC):** Distinct dashboards and permissions for Farmers, Collection Officers, Managers, Admins, Veterinarians, and Super-Admins (RCA).
@@ -17,6 +29,24 @@ Umucyo Ledger is a comprehensive, role-based platform designed to manage coopera
 - **Backend:** Python, Django, Django REST Framework, PostgreSQL
 - **Frontend:** React, TypeScript, Vite, Tailwind CSS, Leaflet (Maps), Lucide React (Icons)
 - **Authentication:** JWT (JSON Web Tokens)
+
+---
+
+## Demo Credentials
+
+You can use the following credentials to explore the different role-based dashboards on both local and production environments:
+
+**Password for all demo accounts:** `Umucyo@2026`
+
+| Username   | Role                               |
+|------------|------------------------------------|
+| `admin1`   | Cooperative Admin                  |
+| `manager1` | Cooperative Manager / Accountant   |
+| `officer1` | Collection Officer                 |
+| `vet1`     | Veterinarian / Extension Officer   |
+| `rca1`     | Super-Admin (RCA regulator)        |
+
+*Note: You can also register a new Farmer account directly on the web application.*
 
 ---
 
@@ -74,65 +104,37 @@ The frontend application will be available at `http://localhost:5173/`.
 
 ---
 
-## Demo Credentials
-
-If you ran the `seed_demo_data` command, you can use the following credentials to explore the different role-based dashboards. 
-
-**Password for all demo accounts:** `Umucyo@2026`
-
-| Username   | Role                               |
-|------------|------------------------------------|
-| `admin1`   | Cooperative Admin                  |
-| `manager1` | Cooperative Manager / Accountant   |
-| `officer1` | Collection Officer                 |
-| `vet1`     | Veterinarian / Extension Officer   |
-| `rca1`     | Super-Admin (RCA regulator)        |
-
-*Note: You can also register a new Farmer account via the signup page.*
-
----
-
 ## Deployment to Render
 
-You can easily deploy Umucyo Ledger to [Render](https://render.com/) using Web Services and a Managed PostgreSQL Database.
+The project is configured for seamless deployment on [Render](https://render.com/) using a Managed PostgreSQL Database, a Django Web Service, and a React Static Site.
 
-### 1. Database Setup
-1. In your Render Dashboard, click **New** -> **PostgreSQL**.
-2. Name it (e.g., `umucyo-db`) and create it.
-3. Once created, copy the **Internal Database URL**.
+### Active Render Deployment Configuration:
 
-### 2. Backend Deployment
-1. Click **New** -> **Web Service**.
-2. Connect your GitHub repository.
-3. Configure the service:
-   - **Name:** `umucyo-backend`
+1. **Database (Render PostgreSQL)**:
+   - **Service Name:** `umucyo-db` (PostgreSQL 16)
+
+2. **Backend Web Service**:
+   - **URL:** [https://umucyo-ledger.onrender.com](https://umucyo-ledger.onrender.com)
    - **Root Directory:** `backend`
-   - **Environment:** `Python 3`
    - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
    - **Start Command:** `gunicorn config.wsgi:application`
-4. Add Environment Variables:
-   - `DATABASE_URL`: Paste the Internal Database URL from Step 1.
-   - `SECRET_KEY`: `<generate-a-secure-random-string>`
-   - `DEBUG`: `False`
-   - `ALLOWED_HOSTS`: `<your-render-backend-url>` (e.g., `umucyo-backend.onrender.com`)
-   - `CORS_ALLOWED_ORIGINS`: `<your-render-frontend-url>` (e.g., `https://umucyo-frontend.onrender.com`)
-5. Click **Create Web Service**.
+   - **Key Environment Variables:**
+     - `DATABASE_URL`: `<render-internal-db-url>`
+     - `SECRET_KEY`: `<production-secret-key>`
+     - `DEBUG`: `False`
+     - `ALLOWED_HOSTS`: `umucyo-ledger.onrender.com`
+     - `CORS_ALLOWED_ORIGINS`: `https://umucyo-ledger-frontend.onrender.com`
 
-### 3. Frontend Deployment
-1. Click **New** -> **Static Site**.
-2. Connect your GitHub repository.
-3. Configure the service:
-   - **Name:** `umucyo-frontend`
+3. **Frontend Static Site**:
+   - **URL:** [https://umucyo-ledger-frontend.onrender.com](https://umucyo-ledger-frontend.onrender.com)
    - **Root Directory:** `frontend`
    - **Build Command:** `npm install && npm run build`
-   - **Publish Directory:** `frontend/dist`
-4. Add Environment Variables:
-   - `VITE_API_URL`: `<your-render-backend-url>/api/v1` (e.g., `https://umucyo-backend.onrender.com/api/v1`)
-5. Click **Create Static Site**.
-6. **Important for React Router:** In the Render settings for your Static Site, go to the **Redirects/Rewrites** section and add a rule to support client-side routing:
-   - **Source:** `/*`
-   - **Destination:** `/index.html`
-   - **Action:** `Rewrite`
+   - **Publish Directory:** `dist`
+   - **Environment Variable:** `VITE_API_URL` = `https://umucyo-ledger.onrender.com/api/v1`
+   - **Rewrite Rule for SPA Routing:**
+     - **Source:** `/*`
+     - **Destination:** `/index.html`
+     - **Action:** `Rewrite`
 
 ---
 
