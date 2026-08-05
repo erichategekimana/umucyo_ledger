@@ -32,8 +32,8 @@ class CooperativeViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_authenticated:
             return Cooperative.objects.none()
         
-        # Super admin sees all, others see only theirs (handled by scoped_queryset)
-        if self.request.user.role == "SUPER_ADMIN":
+        # Super admin and Veterinarians see all (vets monitor regionally across coops)
+        if self.request.user.role in ["SUPER_ADMIN", "VETERINARIAN"]:
             return Cooperative.objects.all().order_by("-created_at")
             
         return scoped_queryset(self.request, Cooperative, coop_field="id").order_by("name")

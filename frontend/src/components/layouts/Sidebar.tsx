@@ -54,16 +54,19 @@ const roleMenuMap: Record<Role, MenuItem[]> = {
   ],
   COLLECTION_OFFICER: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Market Prices', icon: <Tags size={18} /> },
     { to: ROUTES.DELIVERIES, label: 'All Deliveries', icon: <Truck size={18} /> },
     { to: ROUTES.DELIVERY_NEW, label: 'Log Delivery', icon: <Plus size={18} /> },
   ],
   VETERINARIAN: [
     { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Market Prices', icon: <Tags size={18} /> },
     { to: ROUTES.ANOMALIES, label: 'Anomaly Reports', icon: <AlertTriangle size={18} /> },
     { to: ROUTES.ANOMALY_MAP, label: 'Map View', icon: <Map size={18} /> },
   ],
   FARMER: [
     { to: ROUTES.DASHBOARD, label: 'My Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: ROUTES.CROP_PRICES, label: 'Market Prices', icon: <Tags size={18} /> },
     { to: ROUTES.DELIVERIES, label: 'My Deliveries', icon: <Truck size={18} /> },
   ],
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { harvestService } from '@/api/harvest.service';
 import { CropPrice } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Tags, Save, Plus, AlertCircle, CheckCircle2, DollarSign, ShieldAlert, Sparkles } from 'lucide-react';
+import { Tags, Save, Plus, AlertCircle, CheckCircle2, DollarSign, ShieldAlert, Sparkles, Trash2 } from 'lucide-react';
 import { handleApiError } from '@/utils/errorHandler';
 
 export const CropPricesPage = () => {
@@ -121,6 +121,22 @@ export const CropPricesPage = () => {
       setError(handleApiError(err, 'Failed to add new crop price.'));
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleDeleteCrop = async (crop: CropPrice) => {
+    if (!window.confirm(`Are you sure you want to delete ${crop.name}? This action cannot be undone.`)) {
+      return;
+    }
+    setError('');
+    setSuccessMsg('');
+    try {
+      await harvestService.deleteCropPrice(crop.id);
+      setPrices((prev) => prev.filter((p) => p.id !== crop.id));
+      setSuccessMsg(`Successfully deleted ${crop.name}.`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      setError(handleApiError(err, `Failed to delete ${crop.name}.`));
     }
   };
 
@@ -272,19 +288,29 @@ export const CropPricesPage = () => {
                   </span>
 
                   {isSuperAdmin && (
-                    <button
-                      onClick={() => handleSaveSingle(crop)}
-                      disabled={savingId === crop.id || !isModified}
-                      className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-40"
-                    >
-                      {savingId === crop.id ? (
-                        <span className="flex items-center gap-1">Saving...</span>
-                      ) : (
-                        <>
-                          <Save size={14} /> Update
-                        </>
-                      )}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDeleteCrop(crop)}
+                        disabled={savingId === crop.id}
+                        className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-40"
+                        title="Delete Crop"
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
+                      <button
+                        onClick={() => handleSaveSingle(crop)}
+                        disabled={savingId === crop.id || !isModified}
+                        className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-40"
+                      >
+                        {savingId === crop.id ? (
+                          <span className="flex items-center gap-1">Saving...</span>
+                        ) : (
+                          <>
+                            <Save size={14} /> Update
+                          </>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

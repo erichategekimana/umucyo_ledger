@@ -23,6 +23,10 @@ export class HarvestService extends BaseService {
     return this.post<CropPrice[]>('/crop-prices/bulk_update/', { prices });
   }
 
+  async deleteCropPrice(id: string): Promise<void> {
+    return this.delete(`/crop-prices/${id}/`);
+  }
+
   // Batches - use paginated
   async listBatches(params?: any): Promise<PaginatedResponse<BatchTotal>> {
     return this.getPaginated<BatchTotal>('/batches/', params);
