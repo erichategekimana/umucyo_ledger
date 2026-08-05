@@ -142,11 +142,17 @@ class CropDeliveryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Logs delivery. FARMER = PENDING. COLLECTION_OFFICER = APPROVED."""
         user = self.request.user
-        farmer = serializer.validated_data["farmer"]
+        farmer = serializer.validated_data.get("farmer")
         
         if user.role == "FARMER":
-            if farmer.user != user:
+            if not farmer:
+                from apps.cooperatives.models import Farmer
+                farmer = getattr(user, "farmer_profile", None) or Farmer.objects.filter(user=user).first()
+            if not farmer or farmer.user != user:
                 raise DRFValidationError("Farmers can only log deliveries for themselves.")
+            if not farmer.cooperative:
+                raise DRFValidationError("Your farmer account is not linked to an active cooperative.")
+            
             delivery = CropDelivery.objects.create(
                 farmer=farmer,
                 cooperative=farmer.cooperative,
@@ -156,7 +162,9 @@ class CropDeliveryViewSet(viewsets.ModelViewSet):
             )
             serializer.instance = delivery
             
-        elif user.role == "COLLECTION_OFFICER":
+        elif user.role in ["COLLECTION_OFFICER", "ADMIN", "SUPER_ADMIN", "MANAGER"]:
+            if not farmer:
+                raise DRFValidationError("Farmer selection is required.")
             delivery = CropDelivery.log_delivery(
                 farmer=farmer,
                 cooperative=farmer.cooperative,

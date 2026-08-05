@@ -2,6 +2,7 @@
 Harvest Ledger Domain Serializers.
 """
 from rest_framework import serializers
+from apps.cooperatives.models import Farmer, Cooperative
 from .models import BatchTotal, CropDelivery, AdjustmentLog, DiscrepancyFlag, CropPrice
 
 
@@ -36,6 +37,8 @@ class BatchTotalSerializer(serializers.ModelSerializer):
 class CropDeliverySerializer(serializers.ModelSerializer):
     """Serializes CropDelivery append-only records."""
 
+    farmer = serializers.PrimaryKeyRelatedField(queryset=Farmer.objects.all(), required=False, allow_null=True)
+    cooperative = serializers.PrimaryKeyRelatedField(queryset=Cooperative.objects.all(), required=False, allow_null=True)
     farmer_name = serializers.CharField(source="farmer.full_name", read_only=True)
     officer_username = serializers.CharField(source="officer.username", read_only=True)
     cooperative_name = serializers.CharField(source="cooperative.name", read_only=True)

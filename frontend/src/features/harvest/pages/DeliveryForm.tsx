@@ -75,12 +75,14 @@ export const DeliveryForm = () => {
     setLoading(true);
     setError('');
     try {
-      await harvestService.createDelivery({
-        farmer: formData.farmer,
-        cooperative: formData.cooperative,
+      const payload: any = {
         crop_type: formData.crop_type,
         weight_kg: parseFloat(formData.weight_kg),
-      });
+      };
+      if (formData.farmer) payload.farmer = formData.farmer;
+      if (formData.cooperative) payload.cooperative = formData.cooperative;
+
+      await harvestService.createDelivery(payload);
       navigate(ROUTES.DELIVERIES);
     } catch (err: any) {
       const { handleApiError } = await import('@/utils/errorHandler');
