@@ -17,6 +17,18 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+// Helper functions for safe number parsing & formatting (prevents toFixed runtime crashes)
+const parseCoord = (val: any): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  return isNaN(num) ? null : num;
+};
+
+const formatCoord = (val: any): string => {
+  const num = parseCoord(val);
+  return num !== null ? num.toFixed(4) : '—';
+};
+
 // Map Click Listener component for creating new anomaly at clicked point
 const MapClickListener = ({
   onMapClick,
@@ -49,10 +61,12 @@ export const AnomalyMap = () => {
   const fetchAnomalies = async () => {
     setLoading(true);
     try {
-      const resp = await agronomyService.listAnomalies({ page_size: 150 });
-      setAnomalies(resp.results);
+      const resp: any = await agronomyService.listAnomalies({ page_size: 150 });
+      const items = Array.isArray(resp) ? resp : (resp?.results || []);
+      setAnomalies(items);
     } catch (err) {
       console.error('Failed to load map data', err);
+      setAnomalies([]);
     } finally {
       setLoading(false);
     }
@@ -75,8 +89,12 @@ export const AnomalyMap = () => {
     }
   };
 
-  const filteredData = anomalies.filter((a) => {
-    if (!a.latitude || !a.longitude) return false;
+  const safeAnomalies = Array.isArray(anomalies) ? anomalies : [];
+
+  const filteredData = safeAnomalies.filter((a) => {
+    const lat = parseCoord(a.latitude);
+    const lng = parseCoord(a.longitude);
+    if (lat === null || lng === null) return false;
     if (statusFilter === 'OPEN') return !a.resolved;
     if (statusFilter === 'RESOLVED') return a.resolved;
     return true;
@@ -100,8 +118,8 @@ export const AnomalyMap = () => {
 
   if (loading) return <LoadingSpinner message="Loading GIS Map data..." />;
 
-  const unresolvedCount = anomalies.filter((a) => !a.resolved).length;
-  const criticalCount = anomalies.filter((a) => !a.resolved && (a.severity === 'CRITICAL' || a.severity === 'HIGH')).length;
+  const unresolvedCount = safeAnomalies.filter((a) => !a.resolved).length;
+  const criticalCount = safeAnomalies.filter((a) => !a.resolved && (a.severity === 'CRITICAL' || a.severity === 'HIGH')).length;
 
   return (
     <div className="space-y-5 animate-fade-in pb-8">
@@ -167,7 +185,7 @@ export const AnomalyMap = () => {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-500">Total Logged</p>
-            <p className="text-lg font-extrabold text-slate-900">{anomalies.length}</p>
+            <p className="text-lg font-extrabold text-slate-900">{safeAnomalies.length}</p>
           </div>
         </div>
 
@@ -232,11 +250,13 @@ export const AnomalyMap = () => {
 
           {/* Render Existing Anomalies */}
           {filteredData.map((a) => {
+            const lat = parseCoord(a.latitude)!;
+            const lng = parseCoord(a.longitude)!;
             const color = getMarkerColor(a.severity, a.resolved);
             return (
               <Marker
                 key={a.id}
-                position={[a.latitude, a.longitude]}
+                position={[lat, lng]}
                 icon={L.divIcon({
                   className: 'custom-div-icon',
                   html: `
@@ -282,7 +302,7 @@ export const AnomalyMap = () => {
                       <div>Cooperative: <span className="text-slate-800 font-bold">{a.cooperative_name || 'N/A'}</span></div>
                       <div>Sector: <span className="text-slate-800 font-bold">{a.sector || 'N/A'}</span></div>
                       <div className="font-mono text-[10px] text-slate-400">
-                        {a.latitude.toFixed(4)}, {a.longitude.toFixed(4)}
+                        {formatCoord(a.latitude)}, {formatCoord(a.longitude)}
                       </div>
                     </div>
 

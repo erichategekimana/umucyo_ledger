@@ -17,7 +17,6 @@ import {
   MapPin,
   RefreshCw,
   Search,
-  Filter
 } from 'lucide-react';
 
 // Fix Leaflet icons
@@ -27,6 +26,18 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
+
+// Safe coordinate parser
+const parseCoord = (val: any): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  return isNaN(num) ? null : num;
+};
+
+const formatCoord = (val: any): string => {
+  const num = parseCoord(val);
+  return num !== null ? num.toFixed(4) : '—';
+};
 
 const severityBadge = (severity: string) => {
   const map: Record<string, string> = {
@@ -53,10 +64,12 @@ export const VeterinarianDashboard = () => {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const resp = await agronomyService.listAnomalies({ ordering: '-created_at', page_size: 100 });
-      setReports(resp.results);
+      const resp: any = await agronomyService.listAnomalies({ ordering: '-created_at', page_size: 100 });
+      const items = Array.isArray(resp) ? resp : (resp?.results || []);
+      setReports(items);
     } catch (error) {
       console.error('Failed to fetch anomaly reports', error);
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -81,20 +94,22 @@ export const VeterinarianDashboard = () => {
 
   if (loading) return <LoadingSpinner message="Loading Veterinarian Workspace..." />;
 
-  const unresolved = reports.filter((r) => !r.resolved);
-  const critical = reports.filter((r) => !r.resolved && (r.severity === 'CRITICAL' || r.severity === 'HIGH'));
-  const resolved = reports.filter((r) => r.resolved);
+  const safeReports = Array.isArray(reports) ? reports : [];
 
-  const filteredReports = reports.filter((r) => {
+  const unresolved = safeReports.filter((r) => !r.resolved);
+  const critical = safeReports.filter((r) => !r.resolved && (r.severity === 'CRITICAL' || r.severity === 'HIGH'));
+  const resolved = safeReports.filter((r) => r.resolved);
+
+  const filteredReports = safeReports.filter((r) => {
     if (filterTab === 'OPEN' && r.resolved) return false;
     if (filterTab === 'RESOLVED' && !r.resolved) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
-        r.category.toLowerCase().includes(q) ||
-        r.sector.toLowerCase().includes(q) ||
+        (r.category && r.category.toLowerCase().includes(q)) ||
+        (r.sector && r.sector.toLowerCase().includes(q)) ||
         (r.cooperative_name && r.cooperative_name.toLowerCase().includes(q)) ||
-        r.description.toLowerCase().includes(q)
+        (r.description && r.description.toLowerCase().includes(q))
       );
     }
     return true;
@@ -174,7 +189,7 @@ export const VeterinarianDashboard = () => {
         />
         <StatCard
           title="Total Reports Logged"
-          value={reports.length}
+          value={safeReports.length}
           subtitle="Historical monitoring records"
           icon={<MapPin size={22} />}
           color="blue"
@@ -207,52 +222,56 @@ export const VeterinarianDashboard = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
-            {reports
-              .filter((r) => r.latitude && r.longitude)
-              .map((r) => (
-                <Marker
-                  key={r.id}
-                  position={[r.latitude, r.longitude]}
-                  icon={L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `
-                      <div style="
-                        background-color: ${getMarkerColor(r.severity, r.resolved)};
-                        color: white;
-                        padding: 3px 6px;
-                        border-radius: 12px;
-                        font-size: 10px;
-                        font-weight: 800;
-                        border: 2px solid white;
-                        white-space: nowrap;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-                      ">
-                        ${r.category}
+            {safeReports
+              .filter((r) => parseCoord(r.latitude) !== null && parseCoord(r.longitude) !== null)
+              .map((r) => {
+                const lat = parseCoord(r.latitude)!;
+                const lng = parseCoord(r.longitude)!;
+                return (
+                  <Marker
+                    key={r.id}
+                    position={[lat, lng]}
+                    icon={L.divIcon({
+                      className: 'custom-div-icon',
+                      html: `
+                        <div style="
+                          background-color: ${getMarkerColor(r.severity, r.resolved)};
+                          color: white;
+                          padding: 3px 6px;
+                          border-radius: 12px;
+                          font-size: 10px;
+                          font-weight: 800;
+                          border: 2px solid white;
+                          white-space: nowrap;
+                          box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+                        ">
+                          ${r.category}
+                        </div>
+                      `,
+                      iconSize: [80, 24],
+                      iconAnchor: [40, 12],
+                    })}
+                  >
+                    <Popup>
+                      <div className="p-1 space-y-1.5 min-w-[200px]">
+                        <div className="font-bold text-sm text-slate-900">{r.category}</div>
+                        <div className="text-xs text-slate-500">{r.description}</div>
+                        <div className="text-[11px] font-semibold text-slate-700">
+                          Sector: {r.sector || 'N/A'} | Status: {r.resolved ? 'Resolved' : r.severity}
+                        </div>
+                        <div className="pt-1 flex gap-2">
+                          <Link
+                            to={ROUTES.ANOMALY_EDIT(r.id)}
+                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded"
+                          >
+                            Edit
+                          </Link>
+                        </div>
                       </div>
-                    `,
-                    iconSize: [80, 24],
-                    iconAnchor: [40, 12],
-                  })}
-                >
-                  <Popup>
-                    <div className="p-1 space-y-1.5 min-w-[200px]">
-                      <div className="font-bold text-sm text-slate-900">{r.category}</div>
-                      <div className="text-xs text-slate-500">{r.description}</div>
-                      <div className="text-[11px] font-semibold text-slate-700">
-                        Sector: {r.sector || 'N/A'} | Status: {r.resolved ? 'Resolved' : r.severity}
-                      </div>
-                      <div className="pt-1 flex gap-2">
-                        <Link
-                          to={ROUTES.ANOMALY_EDIT(r.id)}
-                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded"
-                        >
-                          Edit
-                        </Link>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                );
+              })}
           </MapContainer>
         </div>
       </div>
@@ -339,7 +358,7 @@ export const VeterinarianDashboard = () => {
                       )}
                     </td>
                     <td className="py-3 px-4 font-mono text-xs text-slate-500">
-                      {row.latitude ? `${row.latitude.toFixed(4)}, ${row.longitude.toFixed(4)}` : '—'}
+                      {formatCoord(row.latitude)}, {formatCoord(row.longitude)}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
